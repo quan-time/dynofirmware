@@ -1,9 +1,12 @@
 int incomingByte = 0;	// for incoming serial data
 int StartValue = 0;
+int RPM_HiLo = 0;
+int Drum_HiLo = 0;
+int DrumIn = 0;
+
 void setup() // main function set
 {
-	Serial.begin(19200);  // setup connection, teensy++ is pure USB anyway, so this isnt hugely important to specify speed
-	attachInterrupt(0, drumrpm, RISING);
+	Serial.begin(19200);  // setup connection, teensy++ is pure USB anyway, so this isnt hugely important to specify speed       
 }
 
 void loop() {	
@@ -49,7 +52,11 @@ void Calc_Start() {
 void Gear_Ratio() {
 	for(int x = 0; x < 10; x++)
         {
-          
+        if (digitalRead(Drum_HiLo) == HIGH);
+        sample1 = micros();
+        else
+        sample2 = micros();
+        serial.println(sample1,',',sample2);  
         }
         Ending_Run();
 }
