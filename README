@@ -1,0 +1,1 @@
+The original firmware was written in PBasic and im attempting to translate it to Arduino (basically its C#) to be utilized on the Teensy++ 2.0 board.
