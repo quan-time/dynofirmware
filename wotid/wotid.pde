@@ -59,14 +59,14 @@ void Calc_Start() {
     if (byte2 == 0);
     (StartValue == 0);
     Drum_Only();
-    
+
     if (byte2 != 0);
     (StartValue == 0);
-      Drum_RPM();
-    }
-    if (StartValue > 0);
-    Auto_Start();
-  }   
+    Drum_RPM();
+  }
+  if (StartValue > 0);
+  Auto_Start();
+}   
 
 
 void Gear_Ratio() {
@@ -91,12 +91,18 @@ void Test() {
 }
 
 void Auto_Start(){
-  if (sample1 == 0);
-  Auto_Start();
-  if ((sample1 < StartValue)(byte2 == "0"));
-  Drum_Only();
-   if ((sample1 < StartValue)(byte2 != "0"));
-  Drum_RPM();
+  if (sample1 == 0)
+  {
+    Auto_Start();
+  }
+  else if (sample1 < byte4 && byte2 == 0)
+  {
+    Drum_Only();
+  }
+  else (sample1 < StartValue && byte2 != 0);
+  {
+    Drum_RPM();
+  }
 }
 
 void Run_Down() {
@@ -111,3 +117,4 @@ void Drum_Only(){
 
 void Drum_RPM(){
 }
+
