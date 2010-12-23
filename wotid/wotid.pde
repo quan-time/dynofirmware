@@ -1,12 +1,17 @@
 int incomingByte = 0;        // for incoming serial data
-int StartValue = 0;
+int pin = 0;
+unsigned long duration;
 int RPM_HiLo = 0;
 int Drum_HiLo = 0;
 int DrumIn = 0;
+int StartValue = 0;
+int sample1 = 0;
+int sample2 = 0;
 
 void setup() // main function set
 {
         Serial.begin(19200);  // setup connection, teensy++ is pure USB anyway, so this isnt hugely important to specify speed       
+        pinMode(pin, INPUT); // Pin 0 should be connected to the optical sensor
 }
 
 void loop() {        
@@ -54,22 +59,15 @@ void Calc_Start() {
 
 void Gear_Ratio() {
             for(int x = 0; x < 10; x++) // loop this function set 10x, thats what the frontend wants
-            
             {
-            if (digitalRead(Drum_HiLo) == HIGH)
-            {
-              int sample1 = 0;
-                sample1 = micros(); // record the length in microsec that pin is HIGH
-               Serial.print(sample1,',');
+            sample1 = 0;  // Reset the sample time back to zero
+            sample1 = pulseIn(Drum_HiLo, HIGH); // measure how long the tooth is on for, store it in "sample1"
+            sample2 = 0; // Reset sample2 back to zero
+            sample2 = pulseIn(Drum_HiLo, LOW); // measure how long the tooth is off for
+            Serial.print(sample1);
+            Serial.print(",");  //  Should print out "yyy,xxx" on 10 individual lines.
+            Serial.println(sample2);
             }
-            else
-            {
-              int sample2 = 0;
-                sample2 = micros(); // record the length in microsec the pin is LOW
-                Serial.print(sample2);
-            }
-      
-        }
         Ending_Run();
 }
 
