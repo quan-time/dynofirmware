@@ -91,6 +91,12 @@ void Test() {
 }
 
 void Auto_Start(){
+  if (sample1 == 0);
+  Auto_Start();
+  if ((sample1 < StartValue)(byte2 == "0"));
+  Drum_Only();
+   if ((sample1 < StartValue)(byte2 != "0"));
+  Drum_RPM();
 }
 
 void Run_Down() {
