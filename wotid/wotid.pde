@@ -19,7 +19,7 @@ void setup() // main function set
 
 void loop() {        
   // read the incoming byte:
-  if (Serial.available() > 0) {
+  if (Serial.available() == 4) {
     int byte1 = Serial.read(); 
     int byte2 = Serial.read(); 
     int byte3 = Serial.read();
@@ -51,21 +51,23 @@ void loop() {
 void About() {
   Serial.println("Quan-Time WOTID firmware");
   Serial.println("Version 0.01a - Yes, its that bad");
-  }
+}
 
 
 void Calc_Start() {
   {
-    if strIn(1) == "0" and StartValue == "0";
+    if (byte2 == 0);
+    (StartValue == 0);
     Drum_Only();
-    {
-      if strIn1(1) <> "0" and StartValue == "0";
+    
+    if (byte2 != 0);
+    (StartValue == 0);
       Drum_RPM();
     }
-    if StartValue > "0" then;
+    if (StartValue > 0);
     Auto_Start();
   }   
- }
+
 
 void Gear_Ratio() {
   for(int x = 0; x < 10; x++) // loop this function set 10x, thats what the frontend wants
@@ -86,13 +88,20 @@ void Test() {
     Serial.print(sample1);
   }
   Ending_Run();
-  }
+}
+
+void Auto_Start(){
+}
 
 void Run_Down() {
-  }
+}
 
 void Ending_Run() {
   Serial.println("T");
-  }
+}
 
+void Drum_Only(){
+}
 
+void Drum_RPM(){
+}
