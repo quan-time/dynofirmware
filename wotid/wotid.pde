@@ -1,3 +1,4 @@
+#include <iostream.h>
 int byte1 = 0; // for incoming serial data
 int byte2 = 0;
 int byte3 = 0;
@@ -99,7 +100,7 @@ void Auto_Start(){
   {
     Drum_Only();
   }
-  else (sample1 < StartValue && byte2 != 0);
+  else if (sample1 < StartValue && byte2 != 0)
   {
     Drum_RPM();
   }
