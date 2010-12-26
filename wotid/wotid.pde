@@ -32,7 +32,8 @@ int StartValue = 0;
 //int sample1 = 0;
 //int sample2 = 0;
 //int sample3 = 0;
-// Global variables are evil 
+// Global variables are evil
+int use_external_rpm_sensor = 0; // set to 1 for yes
 
 void setup() // main function set
 {
@@ -203,17 +204,28 @@ void Drum_RPM(){
   
   sample1 = pulseIn(Drum_HiLo, HIGH);
   sample2 = pulseIn(Drum_HiLo, LOW);
-	
-  // should this be HIGH or LOW?
-  sample3 = pulseIn(RPM_HiLo, HIGH);
+
+  if (use_external_rpm_sensor = 1)
+  {
+    sample3 = pulseIn(RPM_HiLo, HIGH);
+  }
 
   Serial.print(sample1,HEX);
   Serial.print(",");
-  Serial.print(sample2,HEX);
-  Serial.print(",");
-  Serial.println(sample3,HEX);
-  // "sample1,sample2,sample3"
-	
+
+  if (use_external_rpm_sensor = 1) // print the 3rd sample
+  {
+    Serial.print(sample2,HEX);
+    Serial.print(",");
+    Serial.println(sample3,HEX);
+    // "sample1,sample2,sample3"
+  }
+  else
+  {
+    Serial.println(sample2,HEX);
+    // "sample1,sample2"
+  }
+    	
   if (sample1 < sample2)
   {
     Ending_Run();
