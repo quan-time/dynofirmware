@@ -1,4 +1,25 @@
-#include <iostream.h>
+//------------------------------------------------------------------------------
+//  The original concept was derived by Steve of www.wotid.com.  The original
+//  link can be found here:
+//  http://wotid.com/dyno/content/view/14/39/#bs2
+//  Because the original firmware was written by him, his front end software
+//  expects data to be sent and recieved in a certain way.  This added some
+//  constraints to the code, but nothing too complex.
+//
+//  This is by no means perfect, but it should work for what its intended 
+//  purpose is.
+//  Once all parts are working and functioning properly, no future development
+//  or revisions should be required.  One thing I would like to add is an
+//  external RPM sensor.  Something which would go around your spark plug lead
+//  much like a timing light gun.  That or the negative wire on a COP (coil
+//  on plug) setup.  
+//
+//  Original credit to Steve for the original concept, And Moodles for
+//  some code help as im a lazy sod and he offered :)
+//------------------------------------------------------------------------------
+
+//#include <iostream.h>
+//#include <iostream>
 int byte1 = 0; // for incoming serial data
 int byte2 = 0;
 int byte3 = 0;
@@ -11,6 +32,7 @@ int DrumIn = 0;
 int StartValue = 0;
 int sample1 = 0;
 int sample2 = 0;
+int sample3 = 0;
 
 void setup() // main function set
 {
@@ -19,16 +41,16 @@ void setup() // main function set
 }
 
 void loop() {        
-  // read the incoming byte:
-  if (Serial.available() == 4) {
-    int byte1 = Serial.read(); 
-    int byte2 = Serial.read(); 
-    int byte3 = Serial.read();
-    int byte4 = Serial.read();
+  // read the incoming byte string, one byte at a time, and assign each byte1 - byte4 respectively.
+  if (Serial.available() == 4) { // This waits till 4 bytes in total have been read.
+    int byte1 = Serial.read();   //  The string format that is sent from the software front end is
+    int byte2 = Serial.read();   //  byte byte carriage-return byte.  
+    int byte3 = Serial.read();   //  byte3 stores a carriage return, and never gets used.  It just
+    int byte4 = Serial.read();   //  help so the prog can read byte4 properly,
 
-    switch (byte1) {
-    case 'A':
-      About();
+    switch (byte1) {  //  byte1 is either A, S, G, T or R.  This reads that byte
+    case 'A':         //  and does a conditional state.
+      About();        //  If no value is usable, then it loops back and tries again.
       break;
     case 'S':
       Calc_Start();
@@ -49,15 +71,15 @@ void loop() {
     }
   }       
 }
-void About() {
-  Serial.println("Quan-Time WOTID firmware");
-  Serial.println("Version 0.01a - Yes, its that bad");
+void About() {                                 //  Fairly self explaitory.  It will dump this info 
+  Serial.println("Quan-Time WOTID firmware");  //  out in plain-text, and is displayed on the software
+  Serial.println("Version 0.01a - Yes, its that bad");  // front end.
 }
 
 
-void Calc_Start() {
-  {
-    if (byte2 == 0);
+void Calc_Start() {        //  The 2nd byte of the string is read to determine if we are going to calculate
+  {                        //  DRUM only, or Drum and simulated engine RPM.
+    if (byte2 == 0);      
     (StartValue == 0);
     Drum_Only();
 
@@ -71,28 +93,38 @@ void Calc_Start() {
 
 
 void Gear_Ratio() {
-  for(int x = 0; x < 10; x++) // loop this function set 10x, thats what the frontend wants
+  //  The gear ratio is determined by holding the engine at a CONSTANT 4000rpm
+  //  and then the drum is measured.  Because the engine is at a known state
+  //  the ratio of drum:engine can be calculated.  This way when the drum
+  //  speed increases, you can guess the engine rpm value.  Its not perfect
+  //  but it should work quite well for what it is.
+  //  
+  //  As a note, this is where i would like to make a specific hardware timing
+  //  mechanism.  That way you can VERY accurately measure engine RPM regardless
+  //  of drum speed.
+  for(int x = 0; x < 10; x++)           // loop this function set 10x, thats what the frontend wants
   {
     sample1 = pulseIn(Drum_HiLo, HIGH); // measure how long the tooth is on for, store it in "sample1"
-    sample2 = pulseIn(Drum_HiLo, LOW); // measure how long the tooth is off for
-    Serial.print(sample1);
-    Serial.print(",");  //  Should print out "yyy,xxx" on 10 individual lines.
-    Serial.println(sample2);
+    sample2 = pulseIn(Drum_HiLo, LOW);  // measure how long the tooth is off for
+    Serial.print(sample1,DEC);
+    Serial.print(",");                  //  Should print out "yyy,xxx" on 10 individual lines.
+    Serial.println(sample2,DEC);
   }
   Ending_Run();
 }
 
-void Test() {
-  for(int x = 0; x < 15; x++) // loop this function set 15x, thats what the frontend wants
+void Test() {                           //  This just makes sure its spitting out data correctly
+                                        // for the front end to see / calculate.
+  for(int x = 0; x < 15; x++)           //  loop this function set 15x, thats what the frontend wants
   {
-    sample1 = pulseIn(Drum_HiLo, HIGH); // measure how long the tooth is on for, store it in "sample1"
-    Serial.print(sample1);
+    sample1 = pulseIn(Drum_HiLo, HIGH); //  measure how long the tooth is on for, store it in "sample1"
+    Serial.print(sample1,DEC);
   }
   Ending_Run();
 }
 
-void Auto_Start(){
-  if (sample1 == 0)
+void Auto_Start(){                      //  The auto_start function is partly set by the software
+  if (sample1 == 0)                     //  front end.  This lets the softawre
   {
     Auto_Start();
   }
@@ -107,6 +139,21 @@ void Auto_Start(){
 }
 
 void Run_Down() {
+	sample1 = pulseIn(Drum_HiLo, HIGH); // measure how long the tooth is on for, store it in "sample1"
+	sample2 = pulseIn(Drum_HiLo, LOW); // measure how long the tooth is off for
+	Serial.print(sample1,HEX);
+	Serial.print(",");  //  Should print out "yyy,xxx" on 10 individual lines.
+	Serial.print(sample2,HEX);
+	Serial.println(",0");  //  Should print out "yyy,xxx" on 10 individual lines.
+    
+	if (sample1 < sample2)
+	{
+		Ending_Run();
+	}
+	else
+	{
+		Run_Down();
+	}
 }
 
 void Ending_Run() {
@@ -114,8 +161,43 @@ void Ending_Run() {
 }
 
 void Drum_Only(){
+	sample1 = pulseIn(Drum_HiLo, HIGH); // measure how long the tooth is on for, store it in "sample1"
+	sample2 = pulseIn(Drum_HiLo, LOW); // measure how long the tooth is off for
+	Serial.print(sample1,HEX);
+	Serial.print(",");  //  Should print out "yyy,xxx" on 10 individual lines.
+	Serial.print(sample2,HEX);
+        Serial.println(",0");
+    
+	if (sample1 < sample2)
+	{
+		Ending_Run();
+	}
+	else
+	{
+		Drum_RPM();
+	}
 }
 
 void Drum_RPM(){
-}
+	sample1 = pulseIn(Drum_HiLo, HIGH);
+	sample2 = pulseIn(Drum_HiLo, LOW);
+	
+	// replace ? with HIGH or LOW (I don't know)
+	sample3 = pulseIn(RPM_HiLo, HIGH );
 
+	Serial.print(sample1,HEX);
+	Serial.print(",");  //  Should print out "yyy,xxx" on 10 individual lines.
+	Serial.print(sample2,HEX);
+	Serial.print(",");  //  Should print out "yyy,xxx" on 10 individual lines.
+	Serial.println(sample3,HEX);
+	//Serial.print("\r\n");
+	
+	if (sample1 < sample2)
+	{
+		Ending_Run();
+	}
+	else
+	{
+		Drum_RPM();
+	}
+}
