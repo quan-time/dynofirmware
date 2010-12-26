@@ -20,6 +20,7 @@
 
 //#include <iostream.h>
 //#include <iostream>
+//only need these for string manipulation
 int byte1 = 0; // for incoming serial data
 int byte2 = 0;
 int byte3 = 0;
@@ -30,9 +31,10 @@ int RPM_HiLo = 0;
 int Drum_HiLo = 0;
 int DrumIn = 0;
 int StartValue = 0;
-int sample1 = 0;
-int sample2 = 0;
-int sample3 = 0;
+//int sample1 = 0;
+//int sample2 = 0;
+//int sample3 = 0;
+// Global variables are evil 
 
 void setup() // main function set
 {
@@ -71,24 +73,30 @@ void loop() {
     }
   }       
 }
+
 void About() {                                 //  Fairly self explaitory.  It will dump this info 
   Serial.println("Quan-Time WOTID firmware");  //  out in plain-text, and is displayed on the software
   Serial.println("Version 0.01a - Yes, its that bad");  // front end.
 }
 
-
 void Calc_Start() {        //  The 2nd byte of the string is read to determine if we are going to calculate
-  {                        //  DRUM only, or Drum and simulated engine RPM.
-    if (byte2 == 0);      
-    (StartValue == 0);
+                           //  DRUM only, or Drum and simulated engine RPM.
+  if ((byte2 = 0) && (StartValue = 0))
+  {
     Drum_Only();
-
-    if (byte2 != 0);
-    (StartValue == 0);
+  }
+  else if (!(byte2 = 0) && (StartValue = 0))
+  {
     Drum_RPM();
   }
-  if (StartValue > 0);
-  Auto_Start();
+  else if (StartValue > 0)
+  {
+    Auto_Start();
+  }
+  else
+  {
+    Serial.println("Problem in Calc_Start, we shouldn't see this!");
+  }
 }   
 
 
@@ -102,12 +110,14 @@ void Gear_Ratio() {
   //  As a note, this is where i would like to make a specific hardware timing
   //  mechanism.  That way you can VERY accurately measure engine RPM regardless
   //  of drum speed.
-  for(int x = 0; x < 10; x++)           // loop this function set 10x, thats what the frontend wants
+  int sample1, sample2;
+
+  for(int x = 0; x < 10; x++) // loop this function set 10x, thats what the frontend wants
   {
     sample1 = pulseIn(Drum_HiLo, HIGH); // measure how long the tooth is on for, store it in "sample1"
-    sample2 = pulseIn(Drum_HiLo, LOW);  // measure how long the tooth is off for
+    sample2 = pulseIn(Drum_HiLo, LOW); // measure how long the tooth is off for
     Serial.print(sample1,DEC);
-    Serial.print(",");                  //  Should print out "yyy,xxx" on 10 individual lines.
+    Serial.print(",");  //  Should print out "yyy,xxx" on 10 individual lines.
     Serial.println(sample2,DEC);
   }
   Ending_Run();
@@ -115,16 +125,22 @@ void Gear_Ratio() {
 
 void Test() {                           //  This just makes sure its spitting out data correctly
                                         // for the front end to see / calculate.
-  for(int x = 0; x < 15; x++)           //  loop this function set 15x, thats what the frontend wants
+  int sample1;
+  
+  for(int x = 0; x < 15; x++) // loop this function set 15x, thats what the frontend wants
   {
-    sample1 = pulseIn(Drum_HiLo, HIGH); //  measure how long the tooth is on for, store it in "sample1"
+    sample1 = pulseIn(Drum_HiLo, HIGH); // measure how long the tooth is on for, store it in "sample1"
     Serial.print(sample1,DEC);
   }
   Ending_Run();
 }
 
-void Auto_Start(){                      //  The auto_start function is partly set by the software
-  if (sample1 == 0)                     //  front end.  This lets the softawre
+void Auto_Start(){
+  int sample1;
+  
+  sample1 = pulseIn(Drum_HiLo, HIGH); // measure how long the tooth is on for, store it in "sample1"
+  
+  if (sample1 == 0)
   {
     Auto_Start();
   }
@@ -139,21 +155,24 @@ void Auto_Start(){                      //  The auto_start function is partly se
 }
 
 void Run_Down() {
-	sample1 = pulseIn(Drum_HiLo, HIGH); // measure how long the tooth is on for, store it in "sample1"
-	sample2 = pulseIn(Drum_HiLo, LOW); // measure how long the tooth is off for
-	Serial.print(sample1,HEX);
-	Serial.print(",");  //  Should print out "yyy,xxx" on 10 individual lines.
-	Serial.print(sample2,HEX);
-	Serial.println(",0");  //  Should print out "yyy,xxx" on 10 individual lines.
+  int sample1, sample2;
+  
+  sample1 = pulseIn(Drum_HiLo, HIGH); // measure how long the tooth is on for, store it in "sample1"
+  sample2 = pulseIn(Drum_HiLo, LOW); // measure how long the tooth is off for
+  Serial.print(sample1,HEX);
+  Serial.print(","); 
+  Serial.print(sample2,HEX);
+  Serial.println(",0");
+  // "sample1,sample2,0"
     
-	if (sample1 < sample2)
-	{
-		Ending_Run();
-	}
-	else
-	{
-		Run_Down();
-	}
+  if (sample1 < sample2)
+  {
+    Ending_Run();
+  }
+  else
+  {
+    Run_Down();
+  }
 }
 
 void Ending_Run() {
@@ -161,43 +180,48 @@ void Ending_Run() {
 }
 
 void Drum_Only(){
-	sample1 = pulseIn(Drum_HiLo, HIGH); // measure how long the tooth is on for, store it in "sample1"
-	sample2 = pulseIn(Drum_HiLo, LOW); // measure how long the tooth is off for
-	Serial.print(sample1,HEX);
-	Serial.print(",");  //  Should print out "yyy,xxx" on 10 individual lines.
-	Serial.print(sample2,HEX);
-        Serial.println(",0");
+  int sample1,sample2;
+  
+  sample1 = pulseIn(Drum_HiLo, HIGH); // measure how long the tooth is on for, store it in "sample1"
+  sample2 = pulseIn(Drum_HiLo, LOW); // measure how long the tooth is off for
+  Serial.print(sample1,HEX);
+  Serial.print(",");
+  Serial.print(sample2,HEX);
+  Serial.println(",0");
+  // "sample1,sample2,0"
     
-	if (sample1 < sample2)
-	{
-		Ending_Run();
-	}
-	else
-	{
-		Drum_RPM();
-	}
+  if (sample1 < sample2)
+  {
+    Ending_Run();
+  }
+  else
+  {
+    Drum_Only();
+  }
 }
 
 void Drum_RPM(){
-	sample1 = pulseIn(Drum_HiLo, HIGH);
-	sample2 = pulseIn(Drum_HiLo, LOW);
+  int sample1, sample2, sample3;
+  
+  sample1 = pulseIn(Drum_HiLo, HIGH);
+  sample2 = pulseIn(Drum_HiLo, LOW);
 	
-	// replace ? with HIGH or LOW (I don't know)
-	sample3 = pulseIn(RPM_HiLo, HIGH );
+  // should this be HIGH or LOW?
+  sample3 = pulseIn(RPM_HiLo, HIGH);
 
-	Serial.print(sample1,HEX);
-	Serial.print(",");  //  Should print out "yyy,xxx" on 10 individual lines.
-	Serial.print(sample2,HEX);
-	Serial.print(",");  //  Should print out "yyy,xxx" on 10 individual lines.
-	Serial.println(sample3,HEX);
-	//Serial.print("\r\n");
+  Serial.print(sample1,HEX);
+  Serial.print(",");
+  Serial.print(sample2,HEX);
+  Serial.print(",");
+  Serial.println(sample3,HEX);
+  // "sample1,sample2,sample3"
 	
-	if (sample1 < sample2)
-	{
-		Ending_Run();
-	}
-	else
-	{
-		Drum_RPM();
-	}
+  if (sample1 < sample2)
+  {
+    Ending_Run();
+  }
+  else
+  {
+    Drum_RPM();
+  }
 }
