@@ -21,8 +21,6 @@
 //#include <iostream.h>
 //#include <iostream>
 //only need these for string manipulation
-int readbyte[5]; // for incoming serial data
-// 4 bytes + 1 byte for padding
 int pin = 0;
 unsigned long duration;
 int RPM_HiLo = 0; // listed as 1 in the PBasic source
@@ -38,6 +36,9 @@ void setup() // main function set
 }
 
 void loop() {        
+  int readbyte[5]; // for incoming serial data
+  // 4 bytes + 1 byte for padding
+
   // read the incoming byte string, one byte at a time, and assign each readbyte[1] - readbyte[4] respectively.
   if (Serial.available() == 4) { // This waits till 4 bytes in total have been read.
     readbyte[1] = Serial.read();   //  The string format that is sent from the software front end is
@@ -50,7 +51,7 @@ void loop() {
       About();        //  If no value is usable, then it loops back and tries again.
       break;
     case 'S':
-      Calc_Start();
+      Calc_Start(readbyte);
       break;        
     case 'G':
       Gear_Ratio();
@@ -130,7 +131,7 @@ void About() {                                 //  Fairly self explaitory.  It w
   return;
 }
 
-void Calc_Start() {        //  The 2nd byte of the string is read to determine if we are going to calculate
+void Calc_Start(int readbyte []) {        //  The 2nd byte of the string is read to determine if we are going to calculate
                            //  DRUM only, or Drum and simulated engine RPM.
   if ((readbyte[2] == 0) && (StartValue == 0))
   {
@@ -144,7 +145,7 @@ void Calc_Start() {        //  The 2nd byte of the string is read to determine i
   }
   else if (StartValue > 0)
   {
-    Auto_Start();
+    Auto_Start(readbyte);
     return;
   }
   else
@@ -195,14 +196,14 @@ void Test() {                           //  This just makes sure its spitting ou
   return;
 }
 
-void Auto_Start(){
+void Auto_Start(int readbyte []){
   int sample1;
   
   sample1 = pulseIn(Drum_HiLo, HIGH); // measure how long the tooth is on for, store it in "sample1"
   
   if (sample1 == 0)
   {
-    Auto_Start();
+    Auto_Start(readbyte);
     return;
   }
   else if (sample1 < readbyte[4] && readbyte[2] == 0)
