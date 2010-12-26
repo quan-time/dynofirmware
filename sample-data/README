@@ -1,0 +1,12 @@
+This is an actual data sample taken from a real bike on the dyno.
+Note values are in HEX, and start large and get smaller and smaller.
+The last value is always 0 because its just a place holder currently.
+
+Because the drum is spooling up, and its spinning slowly, the teeth
+take longer to pass the sensor, thus its a BIG number.  The number is
+microsec's of tooth state.
+Towards the end when when the drum is spinning fast, the numbers are
+much shorter.
+When the drum starts slowing down again, because of the end of the run,
+the softawre tells the dyno to STOP dumping out data, with the "T" at
+the bottom.
