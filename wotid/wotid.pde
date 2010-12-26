@@ -21,10 +21,8 @@
 //#include <iostream.h>
 //#include <iostream>
 //only need these for string manipulation
-int byte1 = 0; // for incoming serial data
-int byte2 = 0;
-int byte3 = 0;
-int byte4 = 0;
+int readbyte[5]; // for incoming serial data
+// 4 bytes + 1 byte for padding
 int pin = 0;
 unsigned long duration;
 int RPM_HiLo = 0;
@@ -43,14 +41,14 @@ void setup() // main function set
 }
 
 void loop() {        
-  // read the incoming byte string, one byte at a time, and assign each byte1 - byte4 respectively.
+  // read the incoming byte string, one byte at a time, and assign each readbyte[1] - readbyte[4] respectively.
   if (Serial.available() == 4) { // This waits till 4 bytes in total have been read.
-    int byte1 = Serial.read();   //  The string format that is sent from the software front end is
-    int byte2 = Serial.read();   //  byte byte carriage-return byte.  
-    int byte3 = Serial.read();   //  byte3 stores a carriage return, and never gets used.  It just
-    int byte4 = Serial.read();   //  help so the prog can read byte4 properly,
+    readbyte[1] = Serial.read();   //  The string format that is sent from the software front end is
+    readbyte[2] = Serial.read();   //  byte byte carriage-return byte.  
+    readbyte[3] = Serial.read();   //  readbyte[3] stores a carriage return, and never gets used.  It just
+    readbyte[4] = Serial.read();   //  help so the prog can read readbyte[4] properly,
 
-    switch (byte1) {  //  byte1 is either A, S, G, T or R.  This reads that byte
+    switch (readbyte[1]) {  //  readbyte[1] is either A, S, G, T or R.  This reads that byte
     case 'A':         //  and does a conditional state.
       About();        //  If no value is usable, then it loops back and tries again.
       break;
@@ -68,7 +66,7 @@ void loop() {
       break;
     default:
       StartValue = 000;
-      byte1 = 0;
+      readbyte[1] = 0;
       break;
     }
   }       
@@ -81,11 +79,11 @@ void About() {                                 //  Fairly self explaitory.  It w
 
 void Calc_Start() {        //  The 2nd byte of the string is read to determine if we are going to calculate
                            //  DRUM only, or Drum and simulated engine RPM.
-  if ((byte2 = 0) && (StartValue = 0))
+  if ((readbyte[2] = 0) && (StartValue = 0))
   {
     Drum_Only();
   }
-  else if (!(byte2 = 0) && (StartValue = 0))
+  else if (!(readbyte[2] = 0) && (StartValue = 0))
   {
     Drum_RPM();
   }
@@ -144,11 +142,11 @@ void Auto_Start(){
   {
     Auto_Start();
   }
-  else if (sample1 < byte4 && byte2 == 0)
+  else if (sample1 < readbyte[4] && readbyte[2] == 0)
   {
     Drum_Only();
   }
-  else if (sample1 < StartValue && byte2 != 0)
+  else if (sample1 < StartValue && readbyte[2] != 0)
   {
     Drum_RPM();
   }
