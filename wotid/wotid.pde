@@ -33,7 +33,7 @@ int use_external_rpm_sensor = 0; // set to 1 for yes
 int debug = 0; // set to 1 for yes
 int logging = 0; // use 0 to save memory
 int current_line = 0;
-char playback_string[200][20]; // allocate 200 lines and 20 bytes per string = 4000 bytes total (Teensy++ 2.0 has 8192 total)
+char playback_string[200][20]; // 200 lines and 100 bytes per string
 
 void setup() // main function set
 {
@@ -114,7 +114,7 @@ void loop() {
 
 // Usage, if there are 2 samples, then you would do "print_hex(2,sample1, sample2, 0);" or if you had 3 samples then "print_hex(3,sample1, sample2, sample3);" or only 1 sample then "print_hex(1,sample1, 0, 0);"
 void print_hex(int samples, int sample [])
-{
+{   
     if (samples == 1)
     {
       Serial.print(sample[0],HEX);
@@ -140,7 +140,10 @@ void print_hex(int samples, int sample [])
     
     if (logging = 1)
     {
-      playback_string[current_line++][sample];
+      current_line++;
+      playback_string[current_line][0] = sample[1];
+      playback_string[current_line][1] = sample[2];
+      playback_string[current_line][2] = sample[3];
     }
     
     return;
