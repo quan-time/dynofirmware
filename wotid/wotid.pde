@@ -22,6 +22,8 @@
 //#include <iostream>
 //only need these for string manipulation
 int pin = 0;
+int playback_pin = 5;
+int playback_buttonState = 0;
 unsigned long duration;
 int RPM_HiLo = 0; // listed as 1 in the PBasic source
 int Drum_HiLo = 0; // listed as 1 in the PBasic source
@@ -29,17 +31,52 @@ int DrumIn = 0; // listed as 0 in the PBasic source
 int StartValue = 0;
 int use_external_rpm_sensor = 0; // set to 1 for yes
 int debug = 0; // set to 1 for yes
+int logging = 0; // use 0 to save memory
+int current_line = 0;
+char playback_string[200][20]; // allocate 200 lines and 20 bytes per string = 4000 bytes total (Teensy++ 2.0 has 8192 total)
 
 void setup() // main function set
 {
   Serial.begin(19200);  // setup connection, teensy++ is pure USB anyway, so this isnt hugely important to specify speed       
   pinMode(pin, INPUT); // Pin 0 should be connected to the optical sensor
+  if (logging == 1)
+  {
+    pinMode(playback_pin, INPUT); // Pin 5 to playback current data
+  }
+}
+
+void playback_rawdata()
+{
+  int i = 0;
+  
+  for(int i = 0; i < current_line; i++)
+  {
+    Serial.print(playback_string[current_line,0]);
+    Serial.print(",");
+    Serial.print(playback_string[current_line,1]);
+    Serial.print(",");
+    Serial.print(playback_string[current_line,2]);
+  }
+  
+  Serial.println("");
+  
+  Ending_Run();
+  return;
 }
 
 void loop() {        
   int readbyte[4]; // for incoming serial data
   // 4 bytes + 1 byte for padding
   // [0] = 1, [1] = 2, [2] = 3, [3] = 4 etc.
+
+  if (logging == 1)
+  {
+    playback_buttonState = digitalRead(playback_pin);
+    if (playback_buttonState == HIGH) 
+    {
+      playback_rawdata();
+    }
+  }
 
   // read the incoming byte string, one byte at a time, and assign each readbyte[1] - readbyte[4] respectively.
   if (Serial.available() == 4) { // This waits till 4 bytes in total have been read.
@@ -65,10 +102,10 @@ void loop() {
       Run_Down();
       break;
     default:
-      StartValue = 0;
-      readbyte[0] = 0;
       Serial.print(readbyte[0]);
       Serial.println(" is invalid!");
+      StartValue = 0;
+      readbyte[0] = 0;
       break;
     }  
   }
@@ -100,6 +137,11 @@ void print_hex(int samples, int sample [])
     }
     
     Serial.println("");
+    
+    if (logging = 1)
+    {
+      playback_string[current_line++][samples];
+    }
     
     return;
 }
