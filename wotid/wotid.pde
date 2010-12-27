@@ -89,16 +89,31 @@ void loop() {
     case 'A':         //  and does a conditional state.
       About();        //  If no value is usable, then it loops back and tries again.
       break;
+    case 'a':
+      About();
+      break;
     case 'S':
       Calc_Start(readbyte);
       break;        
+    case 's':
+      Calc_Start(readbyte);
+      break;
     case 'G':
+      Gear_Ratio();
+      break;
+    case 'g':
       Gear_Ratio();
       break;        
     case 'T':
       Test();
-      break;        
+      break;
+    case 't':
+      Test();
+      break;      
     case 'R':
+      Run_Down();
+      break;
+    case 'r':
       Run_Down();
       break;
     default:
