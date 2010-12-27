@@ -140,7 +140,7 @@ void print_hex(int samples, int sample [])
     
     if (logging = 1)
     {
-      playback_string[current_line++][samples];
+      playback_string[current_line++][sample];
     }
     
     return;
