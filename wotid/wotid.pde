@@ -51,11 +51,11 @@ void playback_rawdata()
   
   for(int i = 0; i < current_line; i++)
   {
-    Serial.print(playback_string[current_line,0]);
+    Serial.print(playback_string[i,0]);
     Serial.print(",");
-    Serial.print(playback_string[current_line,1]);
+    Serial.print(playback_string[i,1]);
     Serial.print(",");
-    Serial.print(playback_string[current_line,2]);
+    Serial.print(playback_string[i,2]);
   }
   
   Serial.println("");
