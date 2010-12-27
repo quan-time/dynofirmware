@@ -28,6 +28,7 @@ int Drum_HiLo = 0; // listed as 1 in the PBasic source
 int DrumIn = 0; // listed as 0 in the PBasic source
 int StartValue = 0;
 int use_external_rpm_sensor = 0; // set to 1 for yes
+int debug = 0; // set to 1 for yes
 
 void setup() // main function set
 {
@@ -36,17 +37,18 @@ void setup() // main function set
 }
 
 void loop() {        
-  int readbyte[5]; // for incoming serial data
+  int readbyte[4]; // for incoming serial data
   // 4 bytes + 1 byte for padding
+  // [0] = 1, [1] = 2, [2] = 3, [3] = 4 etc.
 
   // read the incoming byte string, one byte at a time, and assign each readbyte[1] - readbyte[4] respectively.
   if (Serial.available() == 4) { // This waits till 4 bytes in total have been read.
-    readbyte[1] = Serial.read();   //  The string format that is sent from the software front end is
-    readbyte[2] = Serial.read();   //  byte byte carriage-return byte.  
-    readbyte[3] = Serial.read();   //  readbyte[3] stores a carriage return, and never gets used.  It just
-    readbyte[4] = Serial.read();   //  help so the prog can read readbyte[4] properly,
+    readbyte[0] = Serial.read();   //  The string format that is sent from the software front end is
+    readbyte[1] = Serial.read();   //  byte byte carriage-return byte.  
+    readbyte[2] = Serial.read();   //  readbyte[2] stores a carriage return, and never gets used.  It just
+    readbyte[3] = Serial.read();   //  help so the prog can read readbyte[3] properly,
 
-    switch (readbyte[1]) {  //  readbyte[1] is either A, S, G, T or R.  This reads that byte
+    switch (readbyte[0]) {  //  readbyte[0] is either A, S, G, T or R.  This reads that byte
     case 'A':         //  and does a conditional state.
       About();        //  If no value is usable, then it loops back and tries again.
       break;
@@ -64,7 +66,9 @@ void loop() {
       break;
     default:
       StartValue = 0;
-      readbyte[1] = 0;
+      readbyte[0] = 0;
+      Serial.print(readbyte[0]);
+      Serial.println(" is invalid!");
       break;
     }  
   }
@@ -72,55 +76,59 @@ void loop() {
 }
 
 // Usage, if there are 2 samples, then you would do "print_hex(2,sample1, sample2, 0);" or if you had 3 samples then "print_hex(3,sample1, sample2, sample3);" or only 1 sample then "print_hex(1,sample1, 0, 0);"
-void print_hex(int samples, int sample1, int sample2, int sample3)
+void print_hex(int samples, int sample [])
 {
     if (samples == 1)
     {
-      Serial.println(sample1,HEX);
+      Serial.print(sample[0],HEX);
     }
     else
     {  
-      Serial.print(sample1,HEX);
+      Serial.print(sample[1],HEX);
       Serial.print(",");
     }
 
     if (samples == 2)
     {
-      Serial.println(sample2,HEX); // Complete line
+      Serial.print(sample[2],HEX); // Complete line
     }
     else if (samples == 3)
     {
-      Serial.print(sample2,HEX);
+      Serial.print(sample[2],HEX);
       Serial.print(",");
-      Serial.println(sample3,HEX); // Complete line
+      Serial.print(sample[3],HEX); // Complete line
     }
+    
+    Serial.println("");
     
     return;
 }
 
 // Usage see print_hex
-void print_dec(int samples, int sample1, int sample2, int sample3)
+void print_dec(int samples, int sample [])
 {
     if (samples == 1)
     {
-      Serial.println(sample1,DEC);
+      Serial.print(sample[0],DEC);
     }
     else
     {  
-      Serial.print(sample1,DEC);
+      Serial.print(sample[1],DEC);
       Serial.print(",");
     }
 
     if (samples == 2)
     {
-      Serial.println(sample2,DEC);
+      Serial.print(sample[2],DEC); // Complete line
     }
     else if (samples == 3)
     {
-      Serial.print(sample2,DEC);
+      Serial.print(sample[2],DEC);
       Serial.print(",");
-      Serial.println(sample3,DEC); // Complete line
+      Serial.print(sample[3],DEC); // Complete line
     }
+    
+    Serial.println("");
     
     return;
 }
@@ -133,12 +141,12 @@ void About() {                                 //  Fairly self explaitory.  It w
 
 void Calc_Start(int readbyte []) {        //  The 2nd byte of the string is read to determine if we are going to calculate
                            //  DRUM only, or Drum and simulated engine RPM.
-  if ((readbyte[2] == 0) && (StartValue == 0))
+  if ((readbyte[1] == 0) && (StartValue == 0))
   {
     Drum_Only();
     return;
   }
-  else if (!(readbyte[2] == 0) && (StartValue == 0))
+  else if (!(readbyte[1] == 0) && (StartValue == 0))
   {
     Drum_RPM();
     return;
@@ -150,7 +158,10 @@ void Calc_Start(int readbyte []) {        //  The 2nd byte of the string is read
   }
   else
   {
-    Serial.println("Problem in Calc_Start, we shouldn't see this!");
+    if (debug = 1)
+    {
+      Serial.println("Problem in Calc_Start, we shouldn't see this!");
+    }
     return;
   }
 
@@ -169,49 +180,48 @@ void Gear_Ratio() {
   //  As a note, this is where i would like to make a specific hardware timing
   //  mechanism.  That way you can VERY accurately measure engine RPM regardless
   //  of drum speed.
-  int sample1, sample2;
+  int sample[2];
 
   for(int x = 0; x < 10; x++) // loop this function set 10x, thats what the frontend wants
   {
-    sample1 = pulseIn(Drum_HiLo, HIGH); // measure how long the tooth is on for, store it in "sample1"
-    sample2 = pulseIn(Drum_HiLo, LOW); // measure how long the tooth is off for
+    sample[0] = pulseIn(Drum_HiLo, HIGH); // measure how long the tooth is on for, store it in "sample1"
+    sample[1] = pulseIn(Drum_HiLo, LOW); // measure how long the tooth is off for
 
-    print_dec(2,sample1,sample2,0);
+    print_dec(2,sample);
   }
   Ending_Run();
   return;
 }
 
 void Test() {                           //  This just makes sure its spitting out data correctly
-                                        // for the front end to see / calculate.
-  int sample1;
+  int sample[1];                        // for the front end to see / calculate.
   
   for(int x = 0; x < 15; x++) // loop this function set 15x, thats what the frontend wants
   {
-    sample1 = pulseIn(Drum_HiLo, HIGH); // measure how long the tooth is on for, store it in "sample1"
+    sample[0] = pulseIn(Drum_HiLo, HIGH); // measure how long the tooth is on for, store it in "sample1"
     
-    print_dec(1,sample1,0,0);
+    print_dec(1,sample);
   }
   Ending_Run();
   return;
 }
 
 void Auto_Start(int readbyte []){
-  int sample1;
+  int sample[1];
   
-  sample1 = pulseIn(Drum_HiLo, HIGH); // measure how long the tooth is on for, store it in "sample1"
+  sample[0] = pulseIn(Drum_HiLo, HIGH); // measure how long the tooth is on for, store it in "sample1"
   
-  if (sample1 == 0)
+  if (sample[0] == 0)
   {
     Auto_Start(readbyte);
     return;
   }
-  else if (sample1 < readbyte[4] && readbyte[2] == 0)
+  else if (sample[0] < readbyte[3] && readbyte[1] == 0)
   {
     Drum_Only();
     return;
   }
-  else if (sample1 < StartValue && readbyte[2] != 0)
+  else if (sample[0] < StartValue && readbyte[1] != 0)
   {
     Drum_RPM();
     return;
@@ -221,14 +231,15 @@ void Auto_Start(int readbyte []){
 }
 
 void Run_Down() {
-  int sample1, sample2;
+  int sample[3];
   
-  sample1 = pulseIn(Drum_HiLo, HIGH); // measure how long the tooth is on for, store it in "sample1"
-  sample2 = pulseIn(Drum_HiLo, LOW); // measure how long the tooth is off for
+  sample[0] = pulseIn(Drum_HiLo, HIGH); // measure how long the tooth is on for, store it in "sample1"
+  sample[1] = pulseIn(Drum_HiLo, LOW); // measure how long the tooth is off for
+  sample[2] = 0;
 
-  print_hex(3,sample1,sample2,0);
+  print_hex(3,sample);
     
-  if (sample1 < sample2)
+  if (sample[0] > sample[1])
   {
     Ending_Run();
     return;
@@ -248,14 +259,15 @@ void Ending_Run() {
 }
 
 void Drum_Only(){
-  int sample1,sample2;
+  int sample[3];
   
-  sample1 = pulseIn(Drum_HiLo, HIGH); // measure how long the tooth is on for, store it in "sample1"
-  sample2 = pulseIn(Drum_HiLo, LOW); // measure how long the tooth is off for
+  sample[0] = pulseIn(Drum_HiLo, HIGH); // measure how long the tooth is on for, store it in "sample1"
+  sample[1] = pulseIn(Drum_HiLo, LOW); // measure how long the tooth is off for
+  sample[2] = 0;
 
-  print_hex(3,sample1,sample2,0);
+  print_hex(3,sample);
     
-  if (sample1 < sample2)
+  if (sample[0] < sample[1])
   {
     Ending_Run();
     return;
@@ -270,23 +282,23 @@ void Drum_Only(){
 }
 
 void Drum_RPM(){
-  int sample1, sample2, sample3;
+  int sample[3];
   
-  sample1 = pulseIn(Drum_HiLo, HIGH);
-  sample2 = pulseIn(Drum_HiLo, LOW);
+  sample[0] = pulseIn(Drum_HiLo, HIGH);
+  sample[1] = pulseIn(Drum_HiLo, LOW);
 
   if (use_external_rpm_sensor = 1)
   {
-    sample3 = pulseIn(RPM_HiLo, HIGH);
+    sample[2] = pulseIn(RPM_HiLo, HIGH);
   }
   else
   {
-    sample3 = 0;
+    sample[2] = 0;
   }
 
-  print_hex(3,sample1,sample2,sample3);
+  print_hex(3,sample);
     	
-  if (sample1 < sample2)
+  if (sample[0] < sample[1])
   {
     Ending_Run();
     return;
