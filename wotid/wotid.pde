@@ -84,19 +84,19 @@ void print_hex(int samples, int sample [])
     }
     else
     {  
-      Serial.print(sample[1],HEX);
+      Serial.print(sample[0],HEX);
       Serial.print(",");
     }
 
     if (samples == 2)
     {
-      Serial.print(sample[2],HEX); // Complete line
+      Serial.print(sample[1],HEX); // Complete line
     }
     else if (samples == 3)
     {
-      Serial.print(sample[2],HEX);
+      Serial.print(sample[1],HEX);
       Serial.print(",");
-      Serial.print(sample[3],HEX); // Complete line
+      Serial.print(sample[2],HEX); // Complete line
     }
     
     Serial.println("");
@@ -113,19 +113,19 @@ void print_dec(int samples, int sample [])
     }
     else
     {  
-      Serial.print(sample[1],DEC);
+      Serial.print(sample[0],DEC);
       Serial.print(",");
     }
 
     if (samples == 2)
     {
-      Serial.print(sample[2],DEC); // Complete line
+      Serial.print(sample[1],DEC); // Complete line
     }
     else if (samples == 3)
     {
-      Serial.print(sample[2],DEC);
+      Serial.print(sample[1],DEC);
       Serial.print(",");
-      Serial.print(sample[3],DEC); // Complete line
+      Serial.print(sample[2],DEC); // Complete line
     }
     
     Serial.println("");
