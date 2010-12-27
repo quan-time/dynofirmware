@@ -33,7 +33,7 @@ int use_external_rpm_sensor = 0; // set to 1 for yes
 int debug = 0; // set to 1 for yes
 int logging = 0; // use 0 to save memory
 int current_line = 0;
-char playback_string[200][20]; // 200 lines and 100 bytes per string
+char playback_string[200][20]; // 200 lines and 20 bytes per string (4000 bytes), Teensy++ 2.0 has 8192 total
 
 void setup() // main function set
 {
@@ -141,9 +141,9 @@ void print_hex(int samples, int sample [])
     if (logging = 1)
     {
       current_line++;
-      playback_string[current_line][0] = sample[1];
-      playback_string[current_line][1] = sample[2];
-      playback_string[current_line][2] = sample[3];
+      playback_string[current_line][0] = sample[0];
+      playback_string[current_line][1] = sample[1];
+      playback_string[current_line][2] = sample[2];
     }
     
     return;
