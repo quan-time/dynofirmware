@@ -33,8 +33,8 @@ int use_external_rpm_sensor = 0; // set to 1 for yes
 int debug = 0; // set to 1 for yes
 int logging = 0; // use 0 to save memory
 int current_line = 0;
-char playback_string[200][20]; // 200 lines and 20 bytes per string (4000 bytes), Teensy++ 2.0 has 8192 total
 int allow_recursion = 1; // use 0 to save memory, 1 for debugging
+char playback_string[200][20]; // 200 lines and 20 bytes per string (4000 bytes), Teensy++ 2.0 has 8192 total
 
 void setup() // main function set
 {
@@ -69,11 +69,13 @@ void playback_rawdata()
 
 void loop() {        
   //int readbyte[4]; // for incoming serial data
-  int readbyte[10] = {0,0,0,0,0,0,0,0,0,0}; // room for 10 bytes of data
+  int readbyte[10]; // room for 10 bytes of data
   // 4 bytes + 1 byte for padding
   // [0] = 1, [1] = 2, [2] = 3, [3] = 4 etc.
   int available_bytes = 0;
   int i = 0;
+  String string1 = "";
+  int string2 = 0;
 
   if (logging == 1)
   {
@@ -93,8 +95,22 @@ void loop() {
     {
       readbyte[i] = Serial.read();   //  The string format that is sent from the software front end is
       i++; //increase by 1
+      
+      if ( (available_bytes > 3) && (isAlpha(readbyte[0])) )
+      {
+        string1 += readbyte[i];
+      }
+    }
+    
+    if (string1.length() > 0);
+    {
+      string2 = string1.toInt();
     }
 
+    Serial.flush();
+
+    if ( isAlpha(readbyte[0]) )
+    {
     switch (readbyte[0]) {  //  readbyte[0] is either A, S, G, T or R.  This reads that byte
     case 'A':         //  and does a conditional state.
       About();        //  If no value is usable, then it loops back and tries again.
@@ -103,10 +119,10 @@ void loop() {
       About();
       break;
     case 'S':
-      Calc_Start(readbyte);
+      Calc_Start(readbyte,string2);
       break;        
     case 's':
-      Calc_Start(readbyte);
+      Calc_Start(readbyte,string2);
       break;
     case 'G':
       Gear_Ratio();
@@ -127,12 +143,21 @@ void loop() {
       Run_Down();
       break;
     default:
-      Serial.print(readbyte[0]);
-      Serial.println(" is invalid!");
+      if (debug == 1)
+      {
+        Serial.print(readbyte[0]);
+        Serial.println(" is invalid!");
+      }
       StartValue = 000;
       readbyte[0] = 0;
       break;
-    }  
+    }
+   }
+   else
+   {      
+     StartValue = 000;
+     readbyte[0] = 0;
+   }
   }
   if (allow_recursion == 1)
     return;  
@@ -164,7 +189,7 @@ void print_hex(int samples, int sample [])
     
     Serial.println("");
     
-    if (logging = 1)
+    if (logging == 1)
     {
       current_line++;
       playback_string[current_line][0] = sample[0];
@@ -211,7 +236,7 @@ void About() {                                 //  Fairly self explaitory.  It w
   return;
 }
 
-void Calc_Start(int readbyte []) {        //  The 2nd byte of the string is read to determine if we are going to calculate
+void Calc_Start(int readbyte [], int StartValue) {        //  The 2nd byte of the string is read to determine if we are going to calculate
                            //  DRUM only, or Drum and simulated engine RPM.
   if ((readbyte[1] == 0) && (StartValue == 0))
   {
