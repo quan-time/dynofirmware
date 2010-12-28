@@ -23,6 +23,8 @@
 //only need these for string manipulation
 #include <ctype.h> // isalpha, isnumeric etc
 #include <stdio.h> // concat etc
+
+// Start Setup variables
 int pin = 0;
 int playback_pin = 5;
 int playback_buttonState = 0;
@@ -37,10 +39,13 @@ int logging = 0; // use 0 to save memory
 int current_line = 0;
 int allow_recursion = 1; // use 0 to save memory, 1 for debugging
 char playback_string[200][20]; // 200 lines and 20 bytes per string (4000 bytes), Teensy++ 2.0 has 8192 total
+int com_baud = 19200;
+int quan_mode = 0; // set to 1 if you are quantime
+// End Setup variables
 
 void setup() // main function set
 {
-  Serial.begin(19200);  // setup connection, teensy++ is pure USB anyway, so this isnt hugely important to specify speed       
+  Serial.begin(com_baud);  // setup connection, teensy++ is pure USB anyway, so this isnt hugely important to specify speed       
   pinMode(pin, INPUT); // Pin 0 should be connected to the optical sensor
   if (logging == 1)
   {
@@ -234,6 +239,119 @@ void About() {                                 //  Fairly self explaitory.  It w
 
 void Calc_Start(int readbyte [], int StartValue) {        //  The 2nd byte of the string is read to determine if we are going to calculate
                            //  DRUM only, or Drum and simulated engine RPM.
+  if (quan_mode == 1)
+  {
+Serial.println("510E,4EE2,0");
+Serial.println("4CE5,4B15,0");
+Serial.println("4968,47D8,0");
+Serial.println("465F,450B,0");
+Serial.println("43D0,429F,0");
+Serial.println("4180,4076,0");
+Serial.println("3F78,3E77,0");
+Serial.println("3D83,3C9A,0");
+Serial.println("3BAD,3ACC,0");
+Serial.println("39F5,392A,0");
+Serial.println("3866,37A5,0");
+Serial.println("36ED,3640,0");
+Serial.println("3596,34EC,0");
+Serial.println("3444,33AA,0");
+Serial.println("330E,3277,0");
+Serial.println("31E9,3156,0");
+Serial.println("30CB,3046,0");
+Serial.println("2FC0,2F41,0");
+Serial.println("2EC0,2E49,0");
+Serial.println("2DD2,2D5D,0");
+Serial.println("2CED,2C84,0");
+Serial.println("2C1A,2BB2,0");
+Serial.println("2B4D,2AEC,0");
+Serial.println("2A8B,2A2E,0");
+Serial.println("29D1,2976,0");
+Serial.println("291D,28C5,0");
+Serial.println("2872,281F,0");
+Serial.println("27CE,2780,0");
+Serial.println("2732,26E4,0");
+Serial.println("2696,264F,0");
+Serial.println("2604,25BF,0");
+Serial.println("257A,2539,0");
+Serial.println("24F6,24BA,0");
+Serial.println("247E,2445,0");
+Serial.println("240E,23D6,0");
+Serial.println("23A1,236A,0");
+Serial.println("2335,2300,0");
+Serial.println("22C9,2293,0");
+Serial.println("225D,2227,0");
+Serial.println("21F1,21BA,0");
+Serial.println("2186,2154,0");
+Serial.println("2121,20F0,0");
+Serial.println("20BD,208C,0");
+Serial.println("205D,2031,0");
+Serial.println("2003,1FD4,0");
+Serial.println("1FA8,1F7D,0");
+Serial.println("1F51,1F24,0");
+Serial.println("1EFD,1ED6,0");
+Serial.println("1EB0,1E89,0");
+Serial.println("1E65,1E40,0");
+Serial.println("1E1C,1DFD,0");
+Serial.println("1DDD,1DBB,0");
+Serial.println("1D95,1D74,0");
+Serial.println("1D53,1D34,0");
+Serial.println("1D13,1CF1,0");
+Serial.println("1CD2,1CB1,0");
+Serial.println("1C96,1C7A,0");
+Serial.println("1C5B,1C3C,0");
+Serial.println("1C21,1C05,0");
+Serial.println("1BE9,1BCD,0");
+Serial.println("1BB3,1B97,0");
+Serial.println("1B79,1B5F,0");
+Serial.println("1B48,1B2E,0");
+Serial.println("1B12,1AF7,0");
+Serial.println("1ADF,1AC6,0");
+Serial.println("1AAF,1A95,0");
+Serial.println("1A79,1A5F,0");
+Serial.println("1A49,1A36,0");
+Serial.println("1A1E,1A01,0");
+Serial.println("19EA,19D6,0");
+Serial.println("19A9,1992,0");
+Serial.println("1966,1952,0");
+Serial.println("1927,1911,0");
+Serial.println("18EA,18D5,0");
+Serial.println("18AD,189B,0");
+Serial.println("1872,1861,0");
+Serial.println("183B,182A,0");
+Serial.println("1808,17F4,0");
+Serial.println("17D6,17C5,0");
+Serial.println("17A3,1794,0");
+Serial.println("1774,1764,0");
+Serial.println("1746,1736,0");
+Serial.println("1719,170A,0");
+Serial.println("16ED,16DF,0");
+Serial.println("16C3,16B5,0");
+Serial.println("1698,168B,0");
+Serial.println("1671,1662,0");
+Serial.println("164A,163C,0");
+Serial.println("1622,1618,0");
+Serial.println("15FE,15F2,0");
+Serial.println("15DC,15CD,0");
+Serial.println("15B6,15AC,0");
+Serial.println("1595,158A,0");
+Serial.println("1577,1569,0");
+Serial.println("1553,154A,0");
+Serial.println("1533,152A,0");
+Serial.println("1515,1509,0");
+Serial.println("14F9,14EF,0");
+Serial.println("14DB,14D2,0");
+Serial.println("14BD,14B6,0");
+Serial.println("14A4,149A,0");
+Serial.println("1487,147F,0");
+Serial.println("146B,146B,0");
+Serial.println("1462,1457,0");
+Serial.println("1452,144E,0");
+Serial.println("1444,1440,0");
+Serial.println("143E,143D,0");
+Serial.println("144D,1456,0");
+Serial.println("T");
+  }
+                       
   if ((readbyte[1] == 0) && (StartValue == 0))
   {
     Drum_Only();
