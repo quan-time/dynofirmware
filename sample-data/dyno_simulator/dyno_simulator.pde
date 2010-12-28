@@ -38,13 +38,13 @@ void loop() {
 
 void simulate_dynorun()
 {
-  int highest1 = 20750; // 510E
-  int highest2 = 20194; // 4EE2
-  int lowest1 = 5197; // 144D
-  int lowest2 = 5206; // 1456
-  int samples = 30;
+  int highest1 = 20750; // 510E.. 510E,xxxx,x
+  int highest2 = 20194; // 4EE2.. xxxx,4EE2,x
+  int lowest1 = 5197; // 144D.. 144D,xxxx,x
+  int lowest2 = 5206; // 1456.. xxxx,1456,x
+  int samples = 30; // how many lines to send to the front end
   int i = 0;
-  int delay_timer = 250;
+  int delay_timer = 250; // specify delay in milliseconds to messages sent to the front end
 
   int difference1 = ((highest1 - lowest1) / samples);
   int difference2 = ((highest2 - lowest2) / samples);
@@ -64,4 +64,6 @@ void simulate_dynorun()
   }
 
   Serial.println("T");
+  
+  Serial.end();
 }
