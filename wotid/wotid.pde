@@ -21,7 +21,8 @@
 //#include <iostream.h>
 //#include <iostream>
 //only need these for string manipulation
-#include <ctype.h>
+#include <ctype.h> // isalpha, isnumeric etc
+#include <stdio.h> // concat etc
 int pin = 0;
 int playback_pin = 5;
 int playback_buttonState = 0;
@@ -75,9 +76,10 @@ void loop() {
   // [0] = 1, [1] = 2, [2] = 3, [3] = 4 etc.
   int available_bytes = 0;
   int i = 0;
-  char *string1 = ""; // Placeholder for the startvalue
+  char string1[10]; // Placeholder for the startvalue // allocate 10 bytes
   char string3;
   int string2 = 0; // This is where the above (string1) is converted from a string to int 
+  char tempbyte[2];
 
   if (logging == 1)
   {
@@ -99,13 +101,17 @@ void loop() {
       
       if ( (available_bytes > 3) && (isalpha(readbyte[0])) && (isdigit(readbyte[i]))) // if there are more than 3 bytes (AB,) then lets use the remaining bytes as StartValue, lets also make sure the first byte is alpha (A-Z a-z) and the byte we are reading is a number (this will filter out letters, commas etc)
       {
-        string1 += readbyte[i]; // append each byte to string1 (placeholder for StartValue)
+        //string1 += readbyte[i]; // append each byte to string1 (placeholder for StartValue) // this requires Arduino 0019
+        
+        // C alternative for above
+        sprintf( tempbyte, "%s", readbyte[i] ); // save the incoming byte as a single character string
+        strcat(string1, tempbyte); // append tempbyte to string (example. string1 = "hello" and tempbyte = "a", then string1 becomes "helloa"
       }
       
       i++; //increase by 1
     }
     
-    string2 = atoi(string1);
+    string2 = atoi(string1); // convert string into int
 
     Serial.flush();
 
