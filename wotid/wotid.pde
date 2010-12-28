@@ -45,7 +45,7 @@ int quan_mode = 0; // set to 1 if you are quantime
 
 void setup() // main function set
 {
-  Serial.begin(com_baud);  // setup connection, teensy++ is pure USB anyway, so this isnt hugely important to specify speed       
+  Serial.begin(19200);  // setup connection, teensy++ is pure USB anyway, so this isnt hugely important to specify speed       
   pinMode(pin, INPUT); // Pin 0 should be connected to the optical sensor
   if (logging == 1)
   {
@@ -101,26 +101,10 @@ void loop() {
   // read the incoming byte string, one byte at a time, and assign each readbyte[1] - readbyte[4] respectively.
   if (available_bytes > 0) { // If there are no bytes available, skip this code block
   
-    while (i < available_bytes && i <= 10) // stop at 10 bytes or we will crash 
+    while (i < available_bytes) // && i <= 10) // stop at 10 bytes or we will crash 
     {
       readbyte[i] = Serial.read();   //  let's start reading 1 byte at a time
       
-      if ( (available_bytes > 3) ) // && (isalpha(readbyte[0])) && (isdigit(readbyte[i]))) // if there are more than 3 bytes (AB,) then lets use the remaining bytes as StartValue, lets also make sure the first byte is alpha (A-Z a-z) and the byte we are reading is a number (this will filter out letters, commas etc)
-      {
-        string += readbyte[i]; // append each byte to string1 (placeholder for StartValue) // this requires Arduino 0019
-        
-        // C alternative for above
-        //sprintf( tempbyte, "%s", readbyte[i] ); // save the incoming byte as a single character string
-        //strcat(string1, tempbyte); // append tempbyte to string (example. string1 = "hello" and tempbyte = "a", then string1 becomes "helloa"
-      }
-      
-      i++; //increase by 1
-    }
-    
-    //string2 = String.toInt(string); // Arduino 0022
-    
-    //string2 = atoi(string); // convert string into int without Arduino 0022
-
     if ( (readbyte[0] == 'A') || (readbyte[0] == 'a') )
     {
       About();
@@ -148,9 +132,25 @@ void loop() {
         Serial.print(readbyte[0]);
         Serial.println(" is invalid!");
       }
-      StartValue = 000;
-      readbyte[0] = 0;
+      //StartValue = 000;
+      //readbyte[0] = 0;
     }
+
+      if ( (available_bytes > 3) ) // && (isalpha(readbyte[0])) && (isdigit(readbyte[i]))) // if there are more than 3 bytes (AB,) then lets use the remaining bytes as StartValue, lets also make sure the first byte is alpha (A-Z a-z) and the byte we are reading is a number (this will filter out letters, commas etc)
+      {
+        string += readbyte[i]; // append each byte to string1 (placeholder for StartValue) // this requires Arduino 0019
+        
+        // C alternative for above
+        //sprintf( tempbyte, "%s", readbyte[i] ); // save the incoming byte as a single character string
+        //strcat(string1, tempbyte); // append tempbyte to string (example. string1 = "hello" and tempbyte = "a", then string1 becomes "helloa"
+      }
+      
+      i++; //increase by 1
+    }
+    
+    //string2 = String.toInt(string); // Arduino 0022
+    
+    //string2 = atoi(string); // convert string into int without Arduino 0022
   }  
   
   Serial.flush();
