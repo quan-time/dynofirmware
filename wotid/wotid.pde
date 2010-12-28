@@ -94,12 +94,13 @@ void loop() {
     while (i < available_bytes && i <= 10) // stop at 10 bytes or we will crash 
     {
       readbyte[i] = Serial.read();   //  The string format that is sent from the software front end is
-      i++; //increase by 1
       
-      if ( (available_bytes > 3) && (isAlpha(readbyte[0])) )
+      if ( (available_bytes > 3) && (isAlpha(readbyte[0])) && (isAlphaNumeric(readbyte[i])))
       {
         string1 += readbyte[i];
       }
+      
+      i++; //increase by 1
     }
     
     if (string1.length() > 0);
