@@ -21,6 +21,7 @@
 //#include <iostream.h>
 //#include <iostream>
 //only need these for string manipulation
+#include <ctype.h>
 int pin = 0;
 int playback_pin = 5;
 int playback_buttonState = 0;
@@ -74,8 +75,9 @@ void loop() {
   // [0] = 1, [1] = 2, [2] = 3, [3] = 4 etc.
   int available_bytes = 0;
   int i = 0;
-  String string1 = "";
-  int string2 = 0;
+  char *string1 = ""; // Placeholder for the startvalue
+  char string3;
+  int string2 = 0; // This is where the above (string1) is converted from a string to int 
 
   if (logging == 1)
   {
@@ -89,57 +91,44 @@ void loop() {
   available_bytes = Serial.available();
 
   // read the incoming byte string, one byte at a time, and assign each readbyte[1] - readbyte[4] respectively.
-  if (available_bytes > 0) { // This waits till 4 bytes in total have been read.
+  if (available_bytes > 0) { // If there are no bytes available, skip this code block
   
     while (i < available_bytes && i <= 10) // stop at 10 bytes or we will crash 
     {
-      readbyte[i] = Serial.read();   //  The string format that is sent from the software front end is
+      readbyte[i] = Serial.read();   //  let's start reading 1 byte at a time
       
-      if ( (available_bytes > 3) && (isAlpha(readbyte[0])) && (isAlphaNumeric(readbyte[i])))
+      if ( (available_bytes > 3) && (isalpha(readbyte[0])) && (isdigit(readbyte[i]))) // if there are more than 3 bytes (AB,) then lets use the remaining bytes as StartValue, lets also make sure the first byte is alpha (A-Z a-z) and the byte we are reading is a number (this will filter out letters, commas etc)
       {
-        string1 += readbyte[i];
+        string1 += readbyte[i]; // append each byte to string1 (placeholder for StartValue)
       }
       
       i++; //increase by 1
     }
     
-    if (string1.length() > 0);
-    {
-      string2 = string1.toInt();
-    }
+    string2 = atoi(string1);
 
     Serial.flush();
 
-    if ( isAlpha(readbyte[0]) )
+    if ( isalpha(readbyte[0]) )
     {
     switch (readbyte[0]) {  //  readbyte[0] is either A, S, G, T or R.  This reads that byte
     case 'A':         //  and does a conditional state.
-      About();        //  If no value is usable, then it loops back and tries again.
-      break;
     case 'a':
       About();
       break;
-    case 'S':
-      Calc_Start(readbyte,string2);
-      break;        
+    case 'S':       
     case 's':
       Calc_Start(readbyte,string2);
       break;
     case 'G':
-      Gear_Ratio();
-      break;
     case 'g':
       Gear_Ratio();
       break;        
     case 'T':
-      Test();
-      break;
     case 't':
       Test();
       break;      
     case 'R':
-      Run_Down();
-      break;
     case 'r':
       Run_Down();
       break;
