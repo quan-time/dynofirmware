@@ -34,6 +34,7 @@ int debug = 0; // set to 1 for yes
 int logging = 0; // use 0 to save memory
 int current_line = 0;
 char playback_string[200][20]; // 200 lines and 20 bytes per string (4000 bytes), Teensy++ 2.0 has 8192 total
+int allow_recursion = 1; // use 0 to save memory, 1 for debugging
 
 void setup() // main function set
 {
@@ -61,13 +62,18 @@ void playback_rawdata()
   Serial.println("");
   
   Ending_Run();
-  return;
+
+  if (allow_recursion == 1)
+    return;
 }
 
 void loop() {        
-  int readbyte[4]; // for incoming serial data
+  //int readbyte[4]; // for incoming serial data
+  int readbyte[10] = {0,0,0,0,0,0,0,0,0,0}; // room for 10 bytes of data
   // 4 bytes + 1 byte for padding
   // [0] = 1, [1] = 2, [2] = 3, [3] = 4 etc.
+  int available_bytes = 0;
+  int i = 0;
 
   if (logging == 1)
   {
@@ -77,13 +83,17 @@ void loop() {
       playback_rawdata();
     }
   }
+  
+  available_bytes = Serial.available();
 
   // read the incoming byte string, one byte at a time, and assign each readbyte[1] - readbyte[4] respectively.
-  if (Serial.available() == 4) { // This waits till 4 bytes in total have been read.
-    readbyte[0] = Serial.read();   //  The string format that is sent from the software front end is
-    readbyte[1] = Serial.read();   //  byte byte carriage-return byte.  
-    readbyte[2] = Serial.read();   //  readbyte[2] stores a carriage return, and never gets used.  It just
-    readbyte[3] = Serial.read();   //  help so the prog can read readbyte[3] properly,
+  if (available_bytes > 0) { // This waits till 4 bytes in total have been read.
+  
+    while (i < available_bytes && i <= 10) // stop at 10 bytes or we will crash 
+    {
+      readbyte[i] = Serial.read();   //  The string format that is sent from the software front end is
+      i++; //increase by 1
+    }
 
     switch (readbyte[0]) {  //  readbyte[0] is either A, S, G, T or R.  This reads that byte
     case 'A':         //  and does a conditional state.
@@ -119,12 +129,13 @@ void loop() {
     default:
       Serial.print(readbyte[0]);
       Serial.println(" is invalid!");
-      StartValue = 0;
+      StartValue = 000;
       readbyte[0] = 0;
       break;
     }  
   }
-  return;  
+  if (allow_recursion == 1)
+    return;  
 }
 
 // Usage, if there are 2 samples, then you would do "print_hex(2,sample1, sample2, 0);" or if you had 3 samples then "print_hex(3,sample1, sample2, sample3);" or only 1 sample then "print_hex(1,sample1, 0, 0);"
@@ -160,8 +171,8 @@ void print_hex(int samples, int sample [])
       playback_string[current_line][1] = sample[1];
       playback_string[current_line][2] = sample[2];
     }
-    
-    return;
+    if (allow_recursion == 1)    
+      return;
 }
 
 // Usage see print_hex
@@ -189,13 +200,14 @@ void print_dec(int samples, int sample [])
     }
     
     Serial.println("");
-    
+    if (allow_recursion == 1)
     return;
 }
 
 void About() {                                 //  Fairly self explaitory.  It will dump this info 
   Serial.println("Quan-Time WOTID firmware");  //  out in plain-text, and is displayed on the software
   Serial.println("Version 0.01a - Yes, its that bad");  // front end.
+  if (allow_recursion == 1)
   return;
 }
 
@@ -204,16 +216,19 @@ void Calc_Start(int readbyte []) {        //  The 2nd byte of the string is read
   if ((readbyte[1] == 0) && (StartValue == 0))
   {
     Drum_Only();
+    if (allow_recursion == 1)
     return;
   }
   else if (!(readbyte[1] == 0) && (StartValue == 0))
   {
     Drum_RPM();
+    if (allow_recursion == 1)
     return;
   }
   else if (StartValue > 0)
   {
     Auto_Start(readbyte);
+    if (allow_recursion == 1)
     return;
   }
   else
@@ -222,9 +237,11 @@ void Calc_Start(int readbyte []) {        //  The 2nd byte of the string is read
     {
       Serial.println("Problem in Calc_Start, we shouldn't see this!");
     }
+    if (allow_recursion == 1)
     return;
   }
 
+  if (allow_recursion == 1)
   return;
 }   
 
