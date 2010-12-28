@@ -83,8 +83,9 @@ void loop() {
   int i = 0;
   char string1[10]; // Placeholder for the startvalue // allocate 10 bytes
   char string3;
-  int string2 = 0; // This is where the above (string1) is converted from a string to int 
+  int string2; // This is where the above (string1) is converted from a string to int 
   char tempbyte[2];
+  String string = "";
 
   if (logging == 1)
   {
@@ -104,46 +105,44 @@ void loop() {
     {
       readbyte[i] = Serial.read();   //  let's start reading 1 byte at a time
       
-      if ( (available_bytes > 3) && (isalpha(readbyte[0])) && (isdigit(readbyte[i]))) // if there are more than 3 bytes (AB,) then lets use the remaining bytes as StartValue, lets also make sure the first byte is alpha (A-Z a-z) and the byte we are reading is a number (this will filter out letters, commas etc)
+      if ( (available_bytes > 3) ) // && (isalpha(readbyte[0])) && (isdigit(readbyte[i]))) // if there are more than 3 bytes (AB,) then lets use the remaining bytes as StartValue, lets also make sure the first byte is alpha (A-Z a-z) and the byte we are reading is a number (this will filter out letters, commas etc)
       {
-        //string1 += readbyte[i]; // append each byte to string1 (placeholder for StartValue) // this requires Arduino 0019
+        string += readbyte[i]; // append each byte to string1 (placeholder for StartValue) // this requires Arduino 0019
         
         // C alternative for above
-        sprintf( tempbyte, "%s", readbyte[i] ); // save the incoming byte as a single character string
-        strcat(string1, tempbyte); // append tempbyte to string (example. string1 = "hello" and tempbyte = "a", then string1 becomes "helloa"
+        //sprintf( tempbyte, "%s", readbyte[i] ); // save the incoming byte as a single character string
+        //strcat(string1, tempbyte); // append tempbyte to string (example. string1 = "hello" and tempbyte = "a", then string1 becomes "helloa"
       }
       
       i++; //increase by 1
     }
     
-    string2 = atoi(string1); // convert string into int
+    //string2 = String.toInt(string); // Arduino 0022
+    
+    //string2 = atoi(string); // convert string into int without Arduino 0022
 
-    Serial.flush();
-
-    if ( isalpha(readbyte[0]) )
+    if ( (readbyte[0] == 'A') || (readbyte[0] == 'a') )
     {
-    switch (readbyte[0]) {  //  readbyte[0] is either A, S, G, T or R.  This reads that byte
-    case 'A':         //  and does a conditional state.
-    case 'a':
       About();
-      break;
-    case 'S':       
-    case 's':
-      Calc_Start(readbyte,string2);
-      break;
-    case 'G':
-    case 'g':
+    }
+    else if ( (readbyte[0] == 'S') || (readbyte[0] == 's') )
+    {
+      Calc_Start(readbyte,1); // just hardcoding this to 1 for now
+    }
+    else if ( (readbyte[0] == 'G') || (readbyte[0] == 'g') )
+    {
       Gear_Ratio();
-      break;        
-    case 'T':
-    case 't':
+    }
+    else if ( (readbyte[0] == 'T') || (readbyte[0] == 't') )
+    {
       Test();
-      break;      
-    case 'R':
-    case 'r':
+    }
+    else if ( (readbyte[0] == 'R') || (readbyte[0] == 'r') )
+    {
       Run_Down();
-      break;
-    default:
+    }
+    else
+    {
       if (debug == 1)
       {
         Serial.print(readbyte[0]);
@@ -151,15 +150,11 @@ void loop() {
       }
       StartValue = 000;
       readbyte[0] = 0;
-      break;
     }
-   }
-   else
-   {      
-     StartValue = 000;
-     readbyte[0] = 0;
-   }
-  }
+  }  
+  
+  Serial.flush();
+
   if (allow_recursion == 1)
     return;  
 }
@@ -241,115 +236,7 @@ void Calc_Start(int readbyte [], int StartValue) {        //  The 2nd byte of th
                            //  DRUM only, or Drum and simulated engine RPM.
   if (quan_mode == 1)
   {
-Serial.println("510E,4EE2,0");
-Serial.println("4CE5,4B15,0");
-Serial.println("4968,47D8,0");
-Serial.println("465F,450B,0");
-Serial.println("43D0,429F,0");
-Serial.println("4180,4076,0");
-Serial.println("3F78,3E77,0");
-Serial.println("3D83,3C9A,0");
-Serial.println("3BAD,3ACC,0");
-Serial.println("39F5,392A,0");
-Serial.println("3866,37A5,0");
-Serial.println("36ED,3640,0");
-Serial.println("3596,34EC,0");
-Serial.println("3444,33AA,0");
-Serial.println("330E,3277,0");
-Serial.println("31E9,3156,0");
-Serial.println("30CB,3046,0");
-Serial.println("2FC0,2F41,0");
-Serial.println("2EC0,2E49,0");
-Serial.println("2DD2,2D5D,0");
-Serial.println("2CED,2C84,0");
-Serial.println("2C1A,2BB2,0");
-Serial.println("2B4D,2AEC,0");
-Serial.println("2A8B,2A2E,0");
-Serial.println("29D1,2976,0");
-Serial.println("291D,28C5,0");
-Serial.println("2872,281F,0");
-Serial.println("27CE,2780,0");
-Serial.println("2732,26E4,0");
-Serial.println("2696,264F,0");
-Serial.println("2604,25BF,0");
-Serial.println("257A,2539,0");
-Serial.println("24F6,24BA,0");
-Serial.println("247E,2445,0");
-Serial.println("240E,23D6,0");
-Serial.println("23A1,236A,0");
-Serial.println("2335,2300,0");
-Serial.println("22C9,2293,0");
-Serial.println("225D,2227,0");
-Serial.println("21F1,21BA,0");
-Serial.println("2186,2154,0");
-Serial.println("2121,20F0,0");
-Serial.println("20BD,208C,0");
-Serial.println("205D,2031,0");
-Serial.println("2003,1FD4,0");
-Serial.println("1FA8,1F7D,0");
-Serial.println("1F51,1F24,0");
-Serial.println("1EFD,1ED6,0");
-Serial.println("1EB0,1E89,0");
-Serial.println("1E65,1E40,0");
-Serial.println("1E1C,1DFD,0");
-Serial.println("1DDD,1DBB,0");
-Serial.println("1D95,1D74,0");
-Serial.println("1D53,1D34,0");
-Serial.println("1D13,1CF1,0");
-Serial.println("1CD2,1CB1,0");
-Serial.println("1C96,1C7A,0");
-Serial.println("1C5B,1C3C,0");
-Serial.println("1C21,1C05,0");
-Serial.println("1BE9,1BCD,0");
-Serial.println("1BB3,1B97,0");
-Serial.println("1B79,1B5F,0");
-Serial.println("1B48,1B2E,0");
-Serial.println("1B12,1AF7,0");
-Serial.println("1ADF,1AC6,0");
-Serial.println("1AAF,1A95,0");
-Serial.println("1A79,1A5F,0");
-Serial.println("1A49,1A36,0");
-Serial.println("1A1E,1A01,0");
-Serial.println("19EA,19D6,0");
-Serial.println("19A9,1992,0");
-Serial.println("1966,1952,0");
-Serial.println("1927,1911,0");
-Serial.println("18EA,18D5,0");
-Serial.println("18AD,189B,0");
-Serial.println("1872,1861,0");
-Serial.println("183B,182A,0");
-Serial.println("1808,17F4,0");
-Serial.println("17D6,17C5,0");
-Serial.println("17A3,1794,0");
-Serial.println("1774,1764,0");
-Serial.println("1746,1736,0");
-Serial.println("1719,170A,0");
-Serial.println("16ED,16DF,0");
-Serial.println("16C3,16B5,0");
-Serial.println("1698,168B,0");
-Serial.println("1671,1662,0");
-Serial.println("164A,163C,0");
-Serial.println("1622,1618,0");
-Serial.println("15FE,15F2,0");
-Serial.println("15DC,15CD,0");
-Serial.println("15B6,15AC,0");
-Serial.println("1595,158A,0");
-Serial.println("1577,1569,0");
-Serial.println("1553,154A,0");
-Serial.println("1533,152A,0");
-Serial.println("1515,1509,0");
-Serial.println("14F9,14EF,0");
-Serial.println("14DB,14D2,0");
-Serial.println("14BD,14B6,0");
-Serial.println("14A4,149A,0");
-Serial.println("1487,147F,0");
-Serial.println("146B,146B,0");
-Serial.println("1462,1457,0");
-Serial.println("1452,144E,0");
-Serial.println("1444,1440,0");
-Serial.println("143E,143D,0");
-Serial.println("144D,1456,0");
-Serial.println("T");
+    simulate_dynorun();
   }
                        
   if ((readbyte[1] == 0) && (StartValue == 0))
@@ -526,4 +413,34 @@ void Drum_RPM(){
   }
   
   return;
+}
+
+void simulate_dynorun()
+{
+  int highest1 = 20750; // 510E
+  int highest2 = 20194; // 4EE2
+  int lowest1 = 5197; // 144D
+  int lowest2 = 5206; // 1456
+  int samples = 30; // 30 lines
+  int i = 0;
+  int delay_timer = 500; // delay 500ms per message
+
+  int difference1 = ((highest1 - lowest1) / samples);
+  int difference2 = ((highest2 - lowest2) / samples);
+
+  while (i < samples)
+  {
+	highest1 = (highest1 - difference1);
+	highest2 = (highest2 - difference2);
+
+	Serial.print(highest1,HEX); // change this to DEC if no good
+        Serial.print(",");
+        Serial.print(highest2,HEX); // change this to DEC if no good
+        Serial.println(",0");
+
+        delay(delay_timer);
+	i++;
+  }
+
+  Serial.println("T");
 }
