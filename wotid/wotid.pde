@@ -85,7 +85,7 @@ void loop() {
 
   // read the incoming byte string, one byte at a time, and assign each readbyte[1] - readbyte[4] respectively.
   if (available_bytes > 0) { // If there are no bytes available, skip this code block
-    bytesreceived += available_bytes; // lets collect how many bytes in total the front end has sent
+    bytesreceived = (bytesreceived + available_bytes); // lets collect how many bytes in total the front end has sent
   
     while (i < available_bytes) // && i <= 10) // stop at 10 bytes or we will crash 
     {
