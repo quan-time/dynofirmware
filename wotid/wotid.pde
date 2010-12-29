@@ -105,13 +105,45 @@ void loop() {
         //Serial.println(readbyte[i]);
         
         Serial.print("Character received: '");
-        Serial.println(readbyte[i]);
+        Serial.println(readbyte[i],BYTE);
         
         // Now let's analyze what kind of character the front end is sending us
         
         analyze_character(readbyte[i]);
       }
       
+      if ( (available_bytes > 3) ) // && (isalpha(readbyte[0])) && (isdigit(readbyte[i]))) // if there are more than 3 bytes (AB,) then lets use the remaining bytes as StartValue, lets also make sure the first byte is alpha (A-Z a-z) and the byte we are reading is a number (this will filter out letters, commas etc)
+      {
+        if (debug == 1)
+        {
+          if (isalpha(readbyte[0]))
+          {
+            Serial.print("Read_String: ");
+            Serial.print(readbyte[0],BYTE);
+            Serial.println(" is alphabetical");
+          }
+          
+          if (isdigit(readbyte[i]))
+          {
+            Serial.print("Read_String: ");
+            Serial.print(readbyte[i],BYTE);
+            Serial.println(" is numerical");
+          }
+        }
+          
+        start_count[i] = readbyte[i]; // 4th byte will be saved as start_count[0], 5th byte as start_count[1] etc
+        
+        //string += readbyte[i]; // append each byte to string1 (placeholder for StartValue) // this requires Arduino 0019
+        //string.concat(readbyte[i]); // alternative to above
+        
+        // C alternative for above
+        //sprintf( tempbyte, "%s", readbyte[i] ); // save the incoming byte as a single character string
+        //strcat(string1, tempbyte); // append tempbyte to string (example. string1 = "hello" and tempbyte = "a", then string1 becomes "helloa"
+      }
+      
+      i++; //increase by 1
+    } // end while loop
+    
       //we really should wait till we have analyzed all the available bytes
       if ( (readbyte[0] == 'A') || (readbyte[0] == 'a') )
       {
@@ -144,38 +176,6 @@ void loop() {
         //StartValue = 000;
         //readbyte[0] = 0;
       }
-
-      if ( (available_bytes > 3) ) // && (isalpha(readbyte[0])) && (isdigit(readbyte[i]))) // if there are more than 3 bytes (AB,) then lets use the remaining bytes as StartValue, lets also make sure the first byte is alpha (A-Z a-z) and the byte we are reading is a number (this will filter out letters, commas etc)
-      {
-        if (debug == 1)
-        {
-          if (isalpha(readbyte[0]))
-          {
-            Serial.print("Read_String: ");
-            Serial.print(readbyte[0]);
-            Serial.println(" is alphabetical");
-          }
-          
-          if (isdigit(readbyte[i]))
-          {
-            Serial.print("Read_String: ");
-            Serial.print(readbyte[i]);
-            Serial.println(" is numerical");
-          }
-        }
-          
-        start_count[i] = readbyte[i]; // 4th byte will be saved as start_count[0], 5th byte as start_count[1] etc
-        
-        //string += readbyte[i]; // append each byte to string1 (placeholder for StartValue) // this requires Arduino 0019
-        //string.concat(readbyte[i]); // alternative to above
-        
-        // C alternative for above
-        //sprintf( tempbyte, "%s", readbyte[i] ); // save the incoming byte as a single character string
-        //strcat(string1, tempbyte); // append tempbyte to string (example. string1 = "hello" and tempbyte = "a", then string1 becomes "helloa"
-      }
-      
-      i++; //increase by 1
-    } // end while loop
    
     if (debug == 1)
     {
@@ -249,8 +249,8 @@ void Calc_Start(int readbyte [], int StartValue) {        //  The 2nd byte of th
     {
       Serial.print("readbyte[");
       Serial.print(i);
-      Serial.print("1] is "); // 2nd byte
-      Serial.println(readbyte[i]);
+      Serial.print("] is "); // 2nd byte
+      Serial.println(readbyte[i],BYTE);
       i++;
     }
   }
@@ -296,7 +296,7 @@ void Calc_Start(int readbyte [], int StartValue) {        //  The 2nd byte of th
     {
       Serial.println("Problem in Calc_Start, no IF statements matched!");
       Serial.print("Readbyte[1] was: ");
-      Serial.print(readbyte[1]);
+      Serial.print(readbyte[1],BYTE);
       Serial.print(" while StartValue was: ");
       Serial.println(StartValue);
     }
@@ -648,7 +648,7 @@ void playback_rawdata()
 void analyze_character(int character)
 {
   Serial.print("Received character: ");
-  Serial.println(character);
+  Serial.println(character,BYTE);
   
   if (isalpha(character))
     Serial.println("byte is alphabetical");
