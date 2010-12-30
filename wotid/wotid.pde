@@ -66,11 +66,15 @@ void loop() {
   int string2; // This is where the above (string1) is converted from a string to int 
   char tempbyte[2];
   String string = "";
+  int i2 = 0;
+  int bufferbyte;
   
   //'Where SSSSS is for 0 to 65535 for start figures
   //'S1,23400<cr> = Start,Spark every rev,23400 start count.
   int start_count[5] = { 0 , 0 , 0 , 0, 0 };
+  int start_count2[5] = { 0 , 0 , 0 , 0, 0 };
   int total = 0;
+  int total2 = 0;
   
   if (logging == 1)
   {
@@ -94,7 +98,7 @@ void loop() {
       if (debug == 1)
       {
         Serial.print("Current byte position: ");
-        Serial.print(i);
+        Serial.print((i + 1));
         Serial.print(" of ");
         Serial.println(available_bytes);
         
@@ -104,7 +108,7 @@ void loop() {
         //Serial.print("Byte received: ");
         //Serial.println(readbyte[i]);
         
-        Serial.print("Character received: '");
+        Serial.print("Character received: ");
         Serial.println(readbyte[i],BYTE);
         
         // Now let's analyze what kind of character the front end is sending us
@@ -112,11 +116,11 @@ void loop() {
         analyze_character(readbyte[i]);
       }
       
-      if ( (available_bytes > 3) ) // && (isalpha(readbyte[0])) && (isdigit(readbyte[i]))) // if there are more than 3 bytes (AB,) then lets use the remaining bytes as StartValue, lets also make sure the first byte is alpha (A-Z a-z) and the byte we are reading is a number (this will filter out letters, commas etc)
+      if ( (available_bytes > 2) ) // && (isalpha(readbyte[0])) && (isdigit(readbyte[i]))) // if there are more than 3 bytes (AB,) then lets use the remaining bytes as StartValue, lets also make sure the first byte is alpha (A-Z a-z) and the byte we are reading is a number (this will filter out letters, commas etc)
       {
         if (debug == 1)
         {
-          if (isalpha(readbyte[0]))
+          if (isalpha(readbyte[i]))
           {
             Serial.print("Read_String: ");
             Serial.print(readbyte[0],BYTE);
@@ -131,6 +135,7 @@ void loop() {
           }
         }
           
+        // fix this
         start_count[i] = readbyte[i]; // 4th byte will be saved as start_count[0], 5th byte as start_count[1] etc
         
         //string += readbyte[i]; // append each byte to string1 (placeholder for StartValue) // this requires Arduino 0019
@@ -151,7 +156,41 @@ void loop() {
       }
       else if ( (readbyte[0] == 'S') || (readbyte[0] == 's') )
       {
-        Calc_Start(readbyte,total); // just hardcoding this to 1 for now
+        if (debug == 1)
+        {
+          delay(1); // lets wait 1ms
+          
+          Serial.print("Auto_Start->Calc_Start: received ");
+          Serial.print(available_bytes);
+          Serial.println(" bytes");
+          
+          while (Serial.available())
+          {
+          
+            Serial.print("Auto_Start->Calc_Start: Bytes available in buffer: ");
+            Serial.println(Serial.available());
+          
+            bufferbyte = Serial.read();
+          
+            if (isdigit(bufferbyte))
+            {
+              total2 = (total2*10 + bufferbyte);
+            }
+             
+            if (bufferbyte == ',')
+            {
+              Serial.println("Carriage return detected, exiting loop");
+              break;
+            }
+          
+          delay(1); // 1 ms
+          }
+        
+          Serial.print("total2 equals: ");
+          Serial.println(total2);
+        }
+
+        Calc_Start(readbyte,total2); // just hardcoding this to 1 for now
       }
       else if ( (readbyte[0] == 'G') || (readbyte[0] == 'g') )
       {
@@ -183,8 +222,6 @@ void loop() {
       Serial.print(string);
       Serial.println("'");
     }
-   
-    total = total*10 + start_count[i]; // converts 1,2,3,4,5 to 12345
    
     //string2 = String.toInt(string); // Arduino 0022
     
@@ -235,15 +272,15 @@ void About() {                                 //  Fairly self explaitory.  It w
     return;
 }
 
-void Calc_Start(int readbyte [], int StartValue) {        //  The 2nd byte of the string is read to determine if we are going to calculate
+void Calc_Start(int readbyte [], int total) {        //  The 2nd byte of the string is read to determine if we are going to calculate
                            //  DRUM only, or Drum and simulated engine RPM.
   int totalbytes = sizeof(readbyte);
   int i = 0;
 
   if (debug == 1)
   {
-    Serial.print("StartValue: ");
-    Serial.println(StartValue); // let's find out what Calc_Start thinks the startvalue is received from the loop()
+    Serial.print("total (formally startvalue): ");
+    Serial.println(total); // let's find out what Calc_Start thinks the startvalue is received from the loop()
     
     while (i < totalbytes) // lets find out what is actually contained in the readbyte[] array
     {
@@ -263,7 +300,7 @@ void Calc_Start(int readbyte [], int StartValue) {        //  The 2nd byte of th
     simulate_dynorun();
   }
                        
-  if ((readbyte[1] == 0) && (StartValue == 0)) // readbyte[1] is the 2nd byte: 0 for no spark pulses, 1 for spark every revolution, 2 for every 2nd revolution
+  if ((readbyte[1] == 0) && (total == 0)) // readbyte[1] is the 2nd byte: 0 for no spark pulses, 1 for spark every revolution, 2 for every 2nd revolution
   {
     if (debug == 1)
       Serial.println("Calc_Start: Initiate Drum_Only");
@@ -272,7 +309,7 @@ void Calc_Start(int readbyte [], int StartValue) {        //  The 2nd byte of th
     if (allow_recursion == 1)
       return;
   }
-  else if (!(readbyte[1] == 0) && (StartValue == 0)) // readbyte[1] is the 2nd byte: 0 for no spark pulses, 1 for spark every revolution, 2 for every 2nd revolution
+  else if (!(readbyte[1] == 0) && (total == 0)) // readbyte[1] is the 2nd byte: 0 for no spark pulses, 1 for spark every revolution, 2 for every 2nd revolution
   {
     if (debug == 1)
       Serial.println("Calc_Start: Initiate Drum_RPM");
@@ -281,7 +318,7 @@ void Calc_Start(int readbyte [], int StartValue) {        //  The 2nd byte of th
     if (allow_recursion == 1)
       return;
   }
-  else if (StartValue > 0)
+  else if (total > 0)
   {
     if (debug == 1)
       Serial.println("Calc_Start: Initiate Auto_Start"); // readbyte[1] is the 2nd byte: 0 for no spark pulses, 1 for spark every revolution, 2 for every 2nd revolution
