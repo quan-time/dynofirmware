@@ -165,7 +165,7 @@ void loop() {
           Serial.print(Serial.available());
           Serial.println(" bytes");
           
-          while (i != 5)
+          while (i3 <= 6)
           {
             if (Serial.available() > 0)
             {
