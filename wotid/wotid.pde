@@ -159,6 +159,7 @@ void loop() {
       {
         if (debug == 1)
         {
+          Serial.flush();
           delay(1); // lets wait 1ms
           
           Serial.print("Auto_Start->Calc_Start: received ");
@@ -178,6 +179,7 @@ void loop() {
               {
                 total2 = (total2*10 + bufferbyte);
                 i3++;
+                Serial.flush();
               }
              
               if (bufferbyte == ',')
@@ -185,6 +187,7 @@ void loop() {
                 Serial.print("total2 equals (cr): ");
                 Serial.println(total2);
                 Serial.println("Carriage return detected, exiting loop");
+                Serial.flush();
                 break;
                 break;
               }
