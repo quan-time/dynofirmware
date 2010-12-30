@@ -447,7 +447,7 @@ void Drum_RPM(){
   sample[0] = pulseIn(Drum_HiLo, HIGH);
   sample[1] = pulseIn(Drum_HiLo, LOW);
 
-  if (use_external_rpm_sensor = 1)
+  if (use_external_rpm_sensor == 1)
   {
     sample[2] = pulseIn(RPM_HiLo, HIGH);
   }
