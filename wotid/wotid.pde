@@ -67,6 +67,7 @@ void loop() {
   char tempbyte[2];
   String string = "";
   int i2 = 0;
+  int i3 = 0;
   int bufferbyte;
   
   //'Where SSSSS is for 0 to 65535 for start figures
@@ -161,29 +162,35 @@ void loop() {
           delay(1); // lets wait 1ms
           
           Serial.print("Auto_Start->Calc_Start: received ");
-          Serial.print(available_bytes);
+          Serial.print(Serial.available());
           Serial.println(" bytes");
           
-          while (Serial.available())
+          while (i != 5)
           {
-          
-            Serial.print("Auto_Start->Calc_Start: Bytes available in buffer: ");
-            Serial.println(Serial.available());
-          
-            bufferbyte = Serial.read();
-          
-            if (isdigit(bufferbyte))
+            if (Serial.available() > 0)
             {
-              total2 = (total2*10 + bufferbyte);
-            }
+              Serial.print("Auto_Start->Calc_Start: Bytes available in buffer: ");
+              Serial.println(Serial.available());
+          
+              bufferbyte = Serial.read();
+          
+              if (isdigit(bufferbyte))
+              {
+                total2 = (total2*10 + bufferbyte);
+                i3++;
+              }
              
-            if (bufferbyte == ',')
-            {
-              Serial.println("Carriage return detected, exiting loop");
-              break;
+              if (bufferbyte == ',')
+              {
+                Serial.print("total2 equals (cr): ");
+                Serial.println(total2);
+                Serial.println("Carriage return detected, exiting loop");
+                break;
+                break;
+              }
             }
-          
-          delay(1); // 1 ms
+            
+            delay(1);
           }
         
           Serial.print("total2 equals: ");
