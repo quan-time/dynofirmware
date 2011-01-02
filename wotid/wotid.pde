@@ -167,7 +167,7 @@ void Calc_Start(int readbyte [], long int startcount)
   {
     if (simulate_drum == 1)
     {
-      simulate_dynorun(readbyte);
+      simulate_dynorun(readbyte, startcount);
       return;
     }
     else
@@ -180,7 +180,7 @@ void Calc_Start(int readbyte [], long int startcount)
   {    
     if (simulate_drum == 1)
     {
-      simulate_dynorun(readbyte);
+      simulate_dynorun(readbyte, startcount);
       return;
     }
     else
@@ -193,7 +193,7 @@ void Calc_Start(int readbyte [], long int startcount)
   {
     if (simulate_drum == 1)
     {
-      simulate_dynorun(readbyte);
+      simulate_dynorun(readbyte, startcount);
       return;
     }
     else
@@ -391,7 +391,7 @@ void playback_rawdata()
   return;
 }
 
-void simulate_dynorun(int readbyte[])
+void simulate_dynorun(int readbyte[], long int startcount) // use startcount to not send data slower than WOTID asks
 {
   int highest1 = 20750; // 510E.. 510E,xxxx,x
   int highest2 = 20194; // 4EE2.. xxxx,4EE2,x
