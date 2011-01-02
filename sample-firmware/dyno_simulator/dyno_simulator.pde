@@ -1,7 +1,7 @@
 void setup() // main function set
 {
   Serial.begin(19200);  // setup connection, teensy++ is pure USB anyway, so this isnt hugely important to specify speed       
-  pinMode(0, INPUT); // Pin 0 should be connected to the optical sensor
+  //pinMode(0, INPUT); // Pin 0 should be connected to the optical sensor
 }
 
 void loop() {        
@@ -65,5 +65,5 @@ void simulate_dynorun()
 
   Serial.println("T");
   
-  Serial.end();
+  //Serial.end();
 }

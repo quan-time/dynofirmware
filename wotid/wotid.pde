@@ -32,10 +32,11 @@ int use_external_rpm_sensor = 0; // set to 1 for yes
 int debug = 0; // set to 1 for yes
 int logging = 0; // use 0 to save memory
 int current_line = 0;
-char playback_string[200][20]; // 200 lines and 20 bytes per string (4000 bytes), Teensy++ 2.0 has 8192 total
+char playback_string[200][15]; // 200 lines and 15 bytes (3000 bytes), Teensy++ 2.0 has 8192 total
 int com_baud = 19200;
 int simulate_drum = 1; // set to 1 to simulate drum
 int bytesreceived = 0;
+int startup = 0;
 // End Setup variables
 
 void setup() // main function set
@@ -46,6 +47,8 @@ void setup() // main function set
   {
     pinMode(playback_pin, INPUT); // Pin 5 to playback current data
   }
+  
+  startup = millis();
 }
 
 void loop() {        
@@ -131,10 +134,24 @@ void loop() {
 void About() //  Fairly self explaitory.  It will dump this info  
 {                                 
   Serial.println("Quan-Time WOTID firmware. Version 0.1"); 
-  Serial.print("Bytes received: ");
-  Serial.print(bytesreceived);
-  Serial.println(", Configuration options: ");
-    
+  Serial.print("Compiled on ");
+  Serial.print(__DATE__);
+  Serial.print(" @ ");
+  Serial.print(__TIME__);
+  Serial.print(" w/ GCC: ");
+  Serial.print(__GNUC__);
+  Serial.print(".");
+  Serial.print(__GNUC_MINOR__);
+  Serial.print(".");
+  Serial.println(__GNUC_PATCHLEVEL__);
+  Serial.print("Uptime: ");
+  uptime();
+  Serial.print(", Free Memory: ");
+  freemem_output();
+  Serial.print(", Bytes received: ");
+  Serial.println(bytesreceived);
+  Serial.print("Config options: ");
+
   Serial.print("INPUT: Pin ");
   Serial.print(pin);
   Serial.print(", ");
@@ -399,7 +416,8 @@ void simulate_dynorun(int readbyte[], long int startcount) // use startcount to 
   int lowest2 = 5206; // 1456.. xxxx,1456,x
   int lowrpm = 1000;
   int highrpm = 9000;
-  int samples = 30; // how many lines to send to the front end
+  //long int samples = 30; // how many lines to send to the front end
+  unsigned long samples = 4294967295;
   int i = 0;
   int delay_timer = 1; // specify delay in milliseconds to messages sent to the front end
   long int sample[3];
@@ -601,5 +619,64 @@ void print_dec(long int sample [])
     playback_string[current_line][2] = sample[2];
   }
 
+  return;
+}
+
+void uptime()
+{
+  long int days, hours, mins;
+  long int currentuptime = ((millis() - startup) /1000);
+
+  days = currentuptime / 86400;
+  hours = (currentuptime / 3600) - (days * 24);
+  mins = (currentuptime / 60) - (days * 1440) - (hours * 60);
+  
+  if (days > 0)
+  {
+    Serial.print(days);
+    Serial.print("d");
+  }
+  if (hours > 0)
+  {
+    Serial.print(hours);
+    Serial.print("h");
+  }
+  if (mins > 0)
+  {
+    Serial.print(mins);
+    Serial.print("m");
+  }
+  Serial.print(currentuptime % 60);
+  Serial.print("s");
+
+  return;
+}
+
+extern int  __bss_end; 
+extern int  *__brkval; 
+int freemem(){ 
+ int free_memory; 
+ if((int)__brkval == 0) 
+   free_memory = ((int)&free_memory) - ((int)&__bss_end); 
+ else 
+   free_memory = ((int)&free_memory) - ((int)__brkval); 
+ return free_memory; 
+}
+
+void freemem_output()
+{
+  float freememory = freemem();
+  
+  if (freememory >= 1024)
+  {
+    Serial.print((freememory/1024));
+    Serial.print("kb(s)");
+  }
+  else
+  {
+    Serial.print(freememory); // no decimal places
+    Serial.print("b(s)");
+  }
+  
   return;
 }
