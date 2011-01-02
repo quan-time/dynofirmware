@@ -18,11 +18,7 @@
 //  some code help as im a lazy sod and he offered :)
 //------------------------------------------------------------------------------
 
-//#include <iostream.h>
-//#include <iostream>
-//only need these for string manipulation
 #include <ctype.h> // isalpha, isnumeric etc
-#include <stdio.h> // concat etc
 
 // Start Setup variables
 int pin = 0;
@@ -32,21 +28,19 @@ unsigned long duration;
 int RPM_HiLo = 0; // listed as 1 in the PBasic source
 int Drum_HiLo = 0; // listed as 1 in the PBasic source
 int DrumIn = 0; // listed as 0 in the PBasic source
-int StartValue = 0;
 int use_external_rpm_sensor = 0; // set to 1 for yes
 int debug = 0; // set to 1 for yes
 int logging = 0; // use 0 to save memory
 int current_line = 0;
-int allow_recursion = 1; // use 0 to save memory, 1 for debugging
 char playback_string[200][20]; // 200 lines and 20 bytes per string (4000 bytes), Teensy++ 2.0 has 8192 total
 int com_baud = 19200;
-int quan_mode = 0; // set to 1 if you are quantime
+int simulate_drum = 1; // set to 1 to simulate drum
 int bytesreceived = 0;
 // End Setup variables
 
 void setup() // main function set
 {
-  Serial.begin(19200);  // setup connection, teensy++ is pure USB anyway, so this isnt hugely important to specify speed       
+  Serial.begin(com_baud);  // setup connection, teensy++ is pure USB anyway, so this isnt hugely important to specify speed       
   pinMode(pin, INPUT); // Pin 0 should be connected to the optical sensor
   if (logging == 1)
   {
@@ -55,27 +49,18 @@ void setup() // main function set
 }
 
 void loop() {        
-  //int readbyte[4]; // for incoming serial data
-  int readbyte[10]; // room for 10 bytes of data
-  // 4 bytes + 1 byte for padding
-  // [0] = 1, [1] = 2, [2] = 3, [3] = 4 etc.
   int available_bytes = 0;
+  int buffer = 10; // allocate 10 bytes
+  int readbyte[buffer];
   int i = 0;
-  char string1[10]; // Placeholder for the startvalue // allocate 10 bytes
-  char string3;
-  int string2; // This is where the above (string1) is converted from a string to int 
-  char tempbyte[2];
-  String string = "";
-  int i2 = 0;
-  int i3 = 0;
-  int bufferbyte;
+  int arrayposition = 0;
   
   //'Where SSSSS is for 0 to 65535 for start figures
   //'S1,23400<cr> = Start,Spark every rev,23400 start count.
-  int start_count[5] = { 0 , 0 , 0 , 0, 0 };
-  int start_count2[5] = { 0 , 0 , 0 , 0, 0 };
-  int total = 0;
-  int total2 = 0;
+  int startcount_buffer = 5;
+  int startcount_input[5] = { 0, 0, 0, 0, 0 }; // maybe default to 65535
+  long int startcount = 0;
+  int startcount_i = 0;
   
   if (logging == 1)
   {
@@ -88,169 +73,67 @@ void loop() {
   
   available_bytes = Serial.available();
 
-  // read the incoming byte string, one byte at a time, and assign each readbyte[1] - readbyte[4] respectively.
-  if (available_bytes > 0) { // If there are no bytes available, skip this code block
+  // read the incoming byte string, one byte at a time, and assign each readbyte[0] - readbyte[1] respectively.
+  // If there are no bytes available, skip this code block
+  if (available_bytes > 0) 
+  { 
     bytesreceived = (bytesreceived + available_bytes); // lets collect how many bytes in total the front end has sent
-  
-    while (i < available_bytes) // && i <= 10) // stop at 10 bytes or we will crash 
-    {
-      readbyte[i] = Serial.read();   //  let's start reading 1 byte at a time
-            
-      if (debug == 1)
-      {
-        Serial.print("Current byte position: ");
-        Serial.print((i + 1));
-        Serial.print(" of ");
-        Serial.println(available_bytes);
-        
-        //Serial.print("Available bytes: ");
-        //Serial.println(available_bytes);
-        
-        //Serial.print("Byte received: ");
-        //Serial.println(readbyte[i]);
-        
-        Serial.print("Character received: ");
-        Serial.println(readbyte[i],BYTE);
-        
-        // Now let's analyze what kind of character the front end is sending us
-        
-        analyze_character(readbyte[i]);
-      }
-      
-      if ( (available_bytes > 2) ) // && (isalpha(readbyte[0])) && (isdigit(readbyte[i]))) // if there are more than 3 bytes (AB,) then lets use the remaining bytes as StartValue, lets also make sure the first byte is alpha (A-Z a-z) and the byte we are reading is a number (this will filter out letters, commas etc)
-      {
-        if (debug == 1)
-        {
-          if (isalpha(readbyte[i]))
-          {
-            Serial.print("Read_String: ");
-            Serial.print(readbyte[0],BYTE);
-            Serial.println(" is alphabetical");
-          }
-          
-          if (isdigit(readbyte[i]))
-          {
-            Serial.print("Read_String: ");
-            Serial.print(readbyte[i],BYTE);
-            Serial.println(" is numerical");
-          }
-        }
-          
-        // fix this
-        start_count[i] = readbyte[i]; // 4th byte will be saved as start_count[0], 5th byte as start_count[1] etc
-        
-        //string += readbyte[i]; // append each byte to string1 (placeholder for StartValue) // this requires Arduino 0019
-        //string.concat(readbyte[i]); // alternative to above
-        
-        // C alternative for above
-        //sprintf( tempbyte, "%s", readbyte[i] ); // save the incoming byte as a single character string
-        //strcat(string1, tempbyte); // append tempbyte to string (example. string1 = "hello" and tempbyte = "a", then string1 becomes "helloa"
-      }
-      
-      i++; //increase by 1
-    } // end while loop
     
-      //we really should wait till we have analyzed all the available bytes
-      if ( (readbyte[0] == 'A') || (readbyte[0] == 'a') )
-      {
-        About();
-      }
-      else if ( (readbyte[0] == 'S') || (readbyte[0] == 's') )
-      {
-        if (debug == 1)
-        {
-          Serial.flush();
-          delay(1); // lets wait 1ms
-          
-          Serial.print("Auto_Start->Calc_Start: received ");
-          Serial.print(Serial.available());
-          Serial.println(" bytes");
-          
-          while (i3 <= 6)
-          {
-            if (Serial.available() > 0)
-            {
-              Serial.print("Auto_Start->Calc_Start: Bytes available in buffer: ");
-              Serial.println(Serial.available());
-          
-              bufferbyte = Serial.read();
-          
-              if (isdigit(bufferbyte))
-              {
-                total2 = (total2*10 + bufferbyte);
-                i3++;
-                Serial.flush();
-              }
-             
-              if (bufferbyte == ',')
-              {
-                Serial.print("total2 equals (cr): ");
-                Serial.println(total2);
-                Serial.println("Carriage return detected, exiting loop");
-                Serial.flush();
-                break;
-                break;
-              }
-            }
-            
-            delay(1);
-          }
-        
-          Serial.print("total2 equals: ");
-          Serial.println(total2);
-        }
-
-        Calc_Start(readbyte,total2); // just hardcoding this to 1 for now
-      }
-      else if ( (readbyte[0] == 'G') || (readbyte[0] == 'g') )
-      {
-        Gear_Ratio();
-      }
-      else if ( (readbyte[0] == 'T') || (readbyte[0] == 't') )
-      {
-        Test();
-      }
-      else if ( (readbyte[0] == 'R') || (readbyte[0] == 'r') )
-      {
-        Run_Down();
-      }
-      else
-      {
-        if (debug == 1)
-        {
-          //Serial.print(readbyte[0]);
-          //Serial.println(" is invalid!");
-          analyze_character(readbyte[0]);
-        }
-        //StartValue = 000;
-        //readbyte[0] = 0;
-      }
-   
-    if (debug == 1)
+    while (i < available_bytes)
     {
-      Serial.print("String: '");
-      Serial.print(string);
-      Serial.println("'");
+      readbyte[i] = Serial.read();
+      i++; 
     }
-   
-    //string2 = String.toInt(string); // Arduino 0022
     
-    //string2 = atoi(string); // convert string into int without Arduino 0022
-  }  
-  
-  Serial.flush();
-
-  if (allow_recursion == 1)
-    return;  
+    if ( (readbyte[0] == 'A') || (readbyte[0] == 'a') )
+    {
+      About();
+      return;
+    }
+    else if ( (readbyte[0] == 'S') && ( (readbyte[1] == '0') || (readbyte[1] == '1') || (readbyte[1] == '2') ) ) // if string is S0, S1 or S2
+    {
+      while (startcount_i < 5) // lets not wait for the 6th byte "," or space whatever it is
+      {
+        available_bytes = Serial.available();
+        if (available_bytes > 0)
+        {
+          startcount_input[startcount_i] = Serial.read();
+          startcount = (startcount*10 + (startcount_input[startcount_i] - 48)); // we take 48 away because 49 is the ASCII code for 1, so 50 - 49 = 1.. if startcount_input were 2, then it would be the ASCII code 50, take 48 and we have the number 2
+          startcount_i++;
+        }
+      }
+      Calc_Start(readbyte,startcount);
+      return;
+    }
+    else if ( (readbyte[0] == 'G') || (readbyte[0] == 'g') )
+    {
+      Gear_Ratio();
+      return;
+    }
+    else if ( (readbyte[0] == 'T') || (readbyte[0] == 't') )
+    {
+      Test();
+      return;
+    }
+    else if ( (readbyte[0] == 'R') || (readbyte[0] == 'r') )
+    {
+      Run_Down();
+      return;
+    }
+    else
+    {
+      return; // not a valid option
+    }
+  }
+  return;  
 }
 
-void About() {                                 //  Fairly self explaitory.  It will dump this info 
-  //Serial.println("Quan-Time WOTID firmware");  //  out in plain-text, and is displayed on the software
-  //Serial.println("Version 0.01a - Yes, its that bad");  // front end.
-  Serial.println("Quan-Time WOTID firmware. Version 0.01a"); 
+void About() //  Fairly self explaitory.  It will dump this info  
+{                                 
+  Serial.println("Quan-Time WOTID firmware. Version 0.1"); 
   Serial.print("Bytes received: ");
   Serial.print(bytesreceived);
-  Serial.print(", Configuration options: ");
+  Serial.println(", Configuration options: ");
     
   Serial.print("INPUT: Pin ");
   Serial.print(pin);
@@ -259,14 +142,11 @@ void About() {                                 //  Fairly self explaitory.  It w
   if (debug == 1)
     Serial.print("Debug ON, ");
   
-  if (quan_mode == 1)
-    Serial.print("Simulate Dynorun ON, ");
+  if (simulate_drum == 1)
+    Serial.print("Simulate Drum ON, ");
     
   if (use_external_rpm_sensor == 1)
     Serial.print("External RPM Sensor ON, ");
-    
-  if (allow_recursion == 1)
-    Serial.print("Allow_Recursion ON, ");
     
   if (logging == 1)
   {
@@ -275,84 +155,58 @@ void About() {                                 //  Fairly self explaitory.  It w
     Serial.print("line(s) stored), ");
   }
   
-  Serial.print(" StartValue: ");
-  Serial.println(StartValue);
-  
-  if (allow_recursion == 1)
-    return;
+  Serial.println("");
+  return;
 }
 
-void Calc_Start(int readbyte [], int total) {        //  The 2nd byte of the string is read to determine if we are going to calculate
-                           //  DRUM only, or Drum and simulated engine RPM.
-  int totalbytes = sizeof(readbyte);
-  int i = 0;
-
-  if (debug == 1)
+//  The 2nd byte of the string is read to determine if we are going to calculate
+//  DRUM only, or Drum and simulated engine RPM.
+void Calc_Start(int readbyte [], long int startcount) 
+{                               
+  if ((readbyte[1] == '0') && (startcount == 0)) // readbyte[1] is the 2nd byte: 0 for no spark pulses, 1 for spark every revolution, 2 for every 2nd revolution
   {
-    Serial.print("total (formally startvalue): ");
-    Serial.println(total); // let's find out what Calc_Start thinks the startvalue is received from the loop()
-    
-    while (i < totalbytes) // lets find out what is actually contained in the readbyte[] array
+    if (simulate_drum == 1)
     {
-      Serial.print("readbyte[");
-      Serial.print(i);
-      Serial.print("] is "); // 2nd byte
-      Serial.println(readbyte[i],BYTE);
-      i++;
+      simulate_dynorun(readbyte);
+      return;
+    }
+    else
+    {
+      Drum_Only();
+      return;
     }
   }
-   
-  if (quan_mode == 1)
-  {
-    if (debug == 1)
-      Serial.println("Calc_Start: Simulating Dyno run");
-
-    simulate_dynorun();
-  }
-                       
-  if ((readbyte[1] == 0) && (total == 0)) // readbyte[1] is the 2nd byte: 0 for no spark pulses, 1 for spark every revolution, 2 for every 2nd revolution
-  {
-    if (debug == 1)
-      Serial.println("Calc_Start: Initiate Drum_Only");
-
-    Drum_Only();
-    if (allow_recursion == 1)
+  else if (!(readbyte[1] == '0') && (startcount == 0)) // readbyte[1] is the 2nd byte: 0 for no spark pulses, 1 for spark every revolution, 2 for every 2nd revolution
+  {    
+    if (simulate_drum == 1)
+    {
+      simulate_dynorun(readbyte);
       return;
-  }
-  else if (!(readbyte[1] == 0) && (total == 0)) // readbyte[1] is the 2nd byte: 0 for no spark pulses, 1 for spark every revolution, 2 for every 2nd revolution
-  {
-    if (debug == 1)
-      Serial.println("Calc_Start: Initiate Drum_RPM");
-      
-    Drum_RPM();
-    if (allow_recursion == 1)
+    }
+    else
+    {
+      Drum_RPM();
       return;
+    }
   }
-  else if (total > 0)
+  else if (startcount > 0)
   {
-    if (debug == 1)
-      Serial.println("Calc_Start: Initiate Auto_Start"); // readbyte[1] is the 2nd byte: 0 for no spark pulses, 1 for spark every revolution, 2 for every 2nd revolution
-      
-    Auto_Start(readbyte);
-    if (allow_recursion == 1)
+    if (simulate_drum == 1)
+    {
+      simulate_dynorun(readbyte);
       return;
+    }
+    else
+    {    
+      Auto_Start(readbyte, startcount);
+      return;
+    }
   }
   else
   {
-    if (debug == 1)
-    {
-      Serial.println("Problem in Calc_Start, no IF statements matched!");
-      Serial.print("Readbyte[1] was: ");
-      Serial.print(readbyte[1],BYTE);
-      Serial.print(" while StartValue was: ");
-      Serial.println(StartValue);
-    }
-    if (allow_recursion == 1)
-      return;
-  }
-
-  if (allow_recursion == 1)
     return;
+  }
+  return;
 }   
 
 
@@ -369,127 +223,111 @@ void Gear_Ratio() {
   mechanism.  That way you can VERY accurately measure engine RPM regardless
   of drum speed.
 */
-  int sample[2]; // initiate an array with 2 element: sample[0] and sample[1]
+  long int sample[2]; // initiate an array with 2 element: sample[0] and sample[1]
 
   for(int x = 0; x < 10; x++) // loop this function set 10x, thats what the frontend wants
   {
     sample[0] = pulseIn(Drum_HiLo, HIGH); // measure how long the tooth is on for, store it in "sample1"
     sample[1] = pulseIn(Drum_HiLo, LOW); // measure how long the tooth is off for
 
-    print_dec(2,sample);
+    print_dec(sample);
   }
   Ending_Run();
-  
-  if (allow_recursion == 1)
-    return;
+  return;
 }
 
 void Test() {                           //  This just makes sure its spitting out data correctly
-  int sample[1];                        // for the front end to see / calculate.
+  long int sample[1];                        // for the front end to see / calculate.
   
   for(int x = 0; x < 15; x++) // loop this function set 15x, thats what the frontend wants
   {
     sample[0] = pulseIn(Drum_HiLo, HIGH); // measure how long the tooth is on for, store it in "sample1"
     
-    print_dec(1,sample);
+    print_dec(sample);
   }
   Ending_Run();
-  
-  if (allow_recursion == 1)
-    return;
+  return;
 }
 
-void Auto_Start(int readbyte []){
-  int sample[1];
+void Auto_Start(int readbyte [], long int startcount){
+  long int sample[1];
   
   sample[0] = pulseIn(Drum_HiLo, HIGH); // measure how long the tooth is on for, store it in "sample1"
   
-  if (sample[0] == 0)
+  if (sample[0] == 0) // drum input timed out after 1 second of no input, try again immediately
   {
-    Auto_Start(readbyte);
-    if (allow_recursion == 1)
-      return;
+    Auto_Start(readbyte, startcount);
+    return;
   }
-  else if (sample[0] < readbyte[3] && readbyte[1] == 0)
+  else if ( (sample[0] < startcount) && (readbyte[1] == '0') ) // if drum input is less than startvalue AND readbyte DOES = 0 is in reference to S0 (0 for no spark pulses)
   {
     Drum_Only();
-    if (allow_recursion == 1)
-      return;
+    return;
   }
-  else if (sample[0] < StartValue && readbyte[1] != 0)
+  else if ( (sample[0] < startcount) && !(readbyte[1] == '0') ) // if drum input is less than startvalue AND readbyte DOES NOT = 0, Sx is either S1 or S2 (1 for spark every revolution, 2 for every 2nd revolution)
   {
     Drum_RPM();
-    if (allow_recursion == 1)
-      return;
-  }
-  
-  if (allow_recursion == 1)
     return;
+  }
+  else
+  {
+    // insert code here if neither of the above are true
+    return;
+  }
+  return;
 }
 
 void Run_Down() {
-  int sample[3];
+  long int sample[3];
   
   sample[0] = pulseIn(Drum_HiLo, HIGH); // measure how long the tooth is on for, store it in "sample1"
   sample[1] = pulseIn(Drum_HiLo, LOW); // measure how long the tooth is off for
   sample[2] = 0;
 
-  print_hex(3,sample);
+  print_hex(sample);
     
   if (sample[0] > sample[1])
   {
     Ending_Run();
-    if (allow_recursion == 1)
-      return;
+    return;
   }
   else
   {
     Run_Down();
-    if (allow_recursion == 1)
-      return;
-  }
-  
-  if (allow_recursion == 1)
     return;
+  }
+  return;
 }
 
 void Ending_Run() {
   Serial.println("T");
-  
-  //Serial.end(); Shall we close the serial connection gracefully and free the network stack?
-
-  if (allow_recursion == 1)
-    return;
+  return;
 }
 
 void Drum_Only(){
-  int sample[3];
+  long int sample[3];
   
   sample[0] = pulseIn(Drum_HiLo, HIGH); // measure how long the tooth is on for, store it in "sample1"
   sample[1] = pulseIn(Drum_HiLo, LOW); // measure how long the tooth is off for
   sample[2] = 0;
 
-  print_hex(3,sample);
+  print_hex(sample);
     
   if (sample[0] < sample[1])
   {
     Ending_Run();
-    if (allow_recursion == 1)
-      return;
+     return;
   }
   else
   {
     Drum_Only();
-    if (allow_recursion == 1)
-      return;
-  }
-  
-  if (allow_recursion == 1)
     return;
+  }
+  return;
 }
 
 void Drum_RPM(){
-  int sample[3];
+  long int sample[3];
   
   sample[0] = pulseIn(Drum_HiLo, HIGH);
   sample[1] = pulseIn(Drum_HiLo, LOW);
@@ -503,160 +341,24 @@ void Drum_RPM(){
     sample[2] = 0;
   }
 
-  print_hex(3,sample);
+  print_hex(sample);
     	
   if (sample[0] < sample[1])
   {
     Ending_Run();
-    if (allow_recursion == 1)
-      return;
+    return;
   }
   else
   {
     Drum_RPM();
-    if (allow_recursion == 1)
-      return;
+    return;
   }
   
-  if (allow_recursion == 1)
-    return;
+  
+  return;
 }
 
 // Below are common functions
-
-void simulate_dynorun()
-{
-  int highest1 = 20750; // 510E.. 510E,xxxx,x
-  int highest2 = 20194; // 4EE2.. xxxx,4EE2,x
-  int lowest1 = 5197; // 144D.. 144D,xxxx,x
-  int lowest2 = 5206; // 1456.. xxxx,1456,x
-  int samples = 30; // how many lines to send to the front end
-  int i = 0;
-  int delay_timer = 12; // specify delay in milliseconds to messages sent to the front end
-
-  int difference1 = ((highest1 - lowest1) / samples);
-  int difference2 = ((highest2 - lowest2) / samples);
-
-  while (i < samples)
-  {
-	highest1 = (highest1 - difference1);
-	highest2 = (highest2 - difference2);
-
-	Serial.print(highest1,HEX); // change this to DEC if no good
-        Serial.print(",");
-        Serial.print(highest2,HEX); // change this to DEC if no good
-        Serial.println(",0");
-
-        delay(delay_timer);
-	i++;
-  }
-
-  Serial.println("T");
-  
-  //Serial.end(); // Should we close the connection?
-  if (allow_recursion == 1)
-    return;
-}
-
-// Usage, if there are 2 samples, then you would do "print_hex(2,sample1, sample2, 0);" or if you had 3 samples then "print_hex(3,sample1, sample2, sample3);" or only 1 sample then "print_hex(1,sample1, 0, 0);"
-void print_hex(int samples, int sample [])
-{   
-  if (debug == 1)
-  {
-    Serial.print("Ammount of samples: ");
-    Serial.print(samples);
-    Serial.print(" sample1: ");
-    Serial.print(sample[0]);
-    Serial.print(" sample2: ");
-    Serial.print(sample[1]);
-    Serial.print(" sample3: ");
-    Serial.print(sample[3]);
-    Serial.println("");
-  }
-
-  if (samples == 1)
-  {
-    Serial.print(sample[0],HEX);
-  }
-  else
-  {  
-    Serial.print(sample[0],HEX);
-    Serial.print(",");
-  }
-
-  if (samples == 2)
-  {
-    Serial.print(sample[1],HEX); // Complete line
-  }
-  else if (samples == 3)
-  {
-    Serial.print(sample[1],HEX);
-    Serial.print(",");
-    Serial.print(sample[2],HEX); // Complete line
-  }
-    
-  Serial.println("");
-    
-  if (logging == 1)
-  {
-    current_line++;
-    playback_string[current_line][0] = sample[0];
-    playback_string[current_line][1] = sample[1];
-    playback_string[current_line][2] = sample[2];
-  }
-  if (allow_recursion == 1)    
-    return;
-}
-
-// Usage see print_hex
-void print_dec(int samples, int sample [])
-{
-  if (debug == 1)
-  {
-    Serial.print("Ammount of samples: ");
-    Serial.print(samples);
-    Serial.print(" sample1: ");
-    Serial.print(sample[0]);
-    Serial.print(" sample2: ");
-    Serial.print(sample[1]);
-    Serial.print(" sample3: ");
-    Serial.print(sample[3]);
-    Serial.println("");
-  }
-
-  if (samples == 1)
-  {
-    Serial.print(sample[0],DEC);
-  }
-  else
-  {  
-    Serial.print(sample[0],DEC);
-    Serial.print(",");
-  }
-
-  if (samples == 2)
-  {
-    Serial.print(sample[1],DEC); // Complete line
-  }
-  else if (samples == 3)
-  {
-    Serial.print(sample[1],DEC);
-    Serial.print(",");
-    Serial.print(sample[2],DEC); // Complete line
-  }
-    
-  Serial.println("");
-    
-  if (logging == 1)
-  {
-    current_line++;
-    playback_string[current_line][0] = sample[0];
-    playback_string[current_line][1] = sample[1];
-    playback_string[current_line][2] = sample[2];
-  }
-  if (allow_recursion == 1)    
-    return;
-}
 
 void playback_rawdata()
 {
@@ -686,9 +388,71 @@ void playback_rawdata()
   }
    
   Ending_Run();
+  return;
+}
 
-  if (allow_recursion == 1)
-    return;
+void simulate_dynorun(int readbyte[])
+{
+  int highest1 = 20750; // 510E.. 510E,xxxx,x
+  int highest2 = 20194; // 4EE2.. xxxx,4EE2,x
+  int lowest1 = 5197; // 144D.. 144D,xxxx,x
+  int lowest2 = 5206; // 1456.. xxxx,1456,x
+  int lowrpm = 1000;
+  int highrpm = 9000;
+  int samples = 30; // how many lines to send to the front end
+  int i = 0;
+  int delay_timer = 1; // specify delay in milliseconds to messages sent to the front end
+  long int sample[3];
+
+  int difference1 = ((highest1 - lowest1) / samples);
+  int difference2 = ((highest2 - lowest2) / samples);
+  int difference3 = ((lowrpm + highrpm) / samples);
+
+  delay(3000); // lets give the frontend time to set itself up, 3 secs
+  
+  if (readbyte[1] == '0') // no spark pulse
+  {
+    while (i < samples)
+    {
+	highest1 = (highest1 - difference1);
+	highest2 = (highest2 - difference2);
+
+        sample[0] = highest1;
+        sample[1] = highest2;
+        sample[2] = 0;
+
+        print_hex(sample);
+
+        delay(delay_timer);
+	i++;
+    }
+  }
+  else if (!(readbyte[1] == '0')) //1 =  spark pulse every revolution, 2 = spark pulse every 2nd revolution
+  {
+    while (i < samples)
+    {
+	highest1 = (highest1 - difference1);
+	highest2 = (highest2 - difference2);
+        lowrpm = (lowrpm + difference3);
+
+        sample[0] = highest1;
+        sample[1] = highest2;
+        sample[2] = lowrpm;
+        
+        if ((readbyte[1] == '2') && (i % 2 == 0)) // emulate spark pulse every 2nd revolution
+          sample[2] = 0; 
+          
+        print_hex(sample);
+
+        delay(delay_timer);
+	i++;
+    }
+  }
+  Serial.println("T");
+
+  //Serial.end(); // Should we close the connection?
+
+  return;
 }
 
 // Let's analyze the provided character
@@ -696,7 +460,7 @@ void analyze_character(int character)
 {
   Serial.print("Received character: ");
   Serial.println(character,BYTE);
-  
+
   if (isalpha(character))
     Serial.println("byte is alphabetical");
 
@@ -732,7 +496,110 @@ void analyze_character(int character)
 
   if (character == ',')
     Serial.println("byte is a carriage return");
-    
-  if (allow_recursion == 1)
-    return;
+
+  return;
+}
+
+// Usage, if there are 2 samples, then you would do "print_hex(2,sample1, sample2, 0);" or if you had 3 samples then "print_hex(3,sample1, sample2, sample3);" or only 1 sample then "print_hex(1,sample1, 0, 0);"
+void print_hex(long int sample [])
+{
+  int samples = (sizeof(sample)+1);
+  
+  if (debug == 1)
+  {
+    Serial.print("Ammount of samples: ");
+    Serial.print(samples);
+    Serial.print(" sample1: ");
+    Serial.print(sample[0]);
+    Serial.print(" sample2: ");
+    Serial.print(sample[1]);
+    Serial.print(" sample3: ");
+    Serial.print(sample[3]);
+    Serial.println("");
+  }
+
+  if (samples == 1)
+  {
+    Serial.print(sample[0],HEX);
+  }
+  else
+  {
+    Serial.print(sample[0],HEX);
+    Serial.print(",");
+  }
+
+  if (samples == 2)
+  {
+    Serial.print(sample[1],HEX); // Complete line
+  }
+  else if (samples == 3)
+  {
+    Serial.print(sample[1],HEX);
+    Serial.print(",");
+    Serial.print(sample[2],HEX); // Complete line
+  }
+
+  Serial.println("");
+
+  if (logging == 1)
+  {
+    current_line++;
+    playback_string[current_line][0] = sample[0];
+    playback_string[current_line][1] = sample[1];
+    playback_string[current_line][2] = sample[2];
+  }
+
+  return;
+}
+
+// Usage see print_hex
+void print_dec(long int sample [])
+{
+  int samples = (sizeof(sample)+1);
+  
+  if (debug == 1)
+  {
+    Serial.print("Ammount of samples: ");
+    Serial.print(samples);
+    Serial.print(" sample1: ");
+    Serial.print(sample[0]);
+    Serial.print(" sample2: ");
+    Serial.print(sample[1]);
+    Serial.print(" sample3: ");
+    Serial.print(sample[3]);
+    Serial.println("");
+  }
+
+  if (samples == 1)
+  {
+    Serial.print(sample[0],DEC);
+  }
+  else
+  {
+    Serial.print(sample[0],DEC);
+    Serial.print(",");
+  }
+
+  if (samples == 2)
+  {
+    Serial.print(sample[1],DEC); // Complete line
+  }
+  else if (samples == 3)
+  {
+    Serial.print(sample[1],DEC);
+    Serial.print(",");
+    Serial.print(sample[2],DEC); // Complete line
+  }
+
+  Serial.println("");
+
+  if (logging == 1)
+  {
+    current_line++;
+    playback_string[current_line][0] = sample[0];
+    playback_string[current_line][1] = sample[1];
+    playback_string[current_line][2] = sample[2];
+  }
+
+  return;
 }
