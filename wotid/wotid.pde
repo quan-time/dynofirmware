@@ -18,28 +18,28 @@
 //  some code help as im a lazy sod and he offered :)
 //------------------------------------------------------------------------------
 
-#include <ctype.h> // isalpha, isnumeric etc
-
 /*
   Start Configuration
   
   _LOGGING_               0 = OFF, 1 = ON  (Logging eats up the unit's memory)
   _SIMULATE_DRUM_         0 = OFF, 1 = ON  (Simulate Dynorun when "Make Run" is started in WOTID, turning this off uses the real Drum)
-  _COM_BAUD_              19200            (Connected
+  _COM_BAUD_              19200            (Serial connection baud rate)
   _DEBUG_                 0 = OFF, 1 = ON  (Debug information, useless to the WOTID frontend, only useful with a terminal connected)
   _EXTERNAL_RPM_SENSOR_   0 = OFF, 1 = ON  (Whether or not there is an external RPM sensor, use _RPM_HILO_ to specify the Pin it's connected to)
   _PIN_                   0                (Which Pin to make a Serial connection with)
   _RPM_HILO_              0                (Which Pin the RPM sensor is connected to)
   _DRUM_HILO_             0                (Which Pin the Drum sensor is connected to)
+  _IGNORE_STARTVALUE_     0 = OFF, 1 = ON  (Ignore the minimum start value (km/h) specified by WOTID, setting this to 1 will send all data to WOTID, even if it's below the start value)
   
 */
 #define _LOGGING_ 0
-#define _SIMULATE_DRUM_ 1
+#define _SIMULATE_DRUM_ 0
 #define _COM_BAUD_ 19200
 #define _DEBUG_ 0
 #define _EXTERNAL_RPM_SENSOR_ 0
 #define _PIN_ 0
 #define _DRUM_HILO_ 0
+#define _IGNORE_STARTVALUE_ 0
 /* End Configuration */ 
 
 /* 
@@ -90,8 +90,8 @@ void loop() {
   
   //'Where SSSSS is for 0 to 65535 for start figures
   //'S1,23400<cr> = Start,Spark every rev,23400 start count.
-  int startcount_buffer = 5;
-  int startcount_input[5] = { 0, 0, 0, 0, 0 }; // maybe default to 65535
+  #define startcount_buffer 5
+  int startcount_input[startcount_buffer] = { 0, 0, 0, 0, 0 }; // maybe default to 65535
   long int startcount = 0; // hold "StartValue"
   int startcount_i = 0;
   
@@ -124,6 +124,7 @@ void loop() {
     }
     else if ( (readbyte[0] == 'S') && ( (readbyte[1] == '0') || (readbyte[1] == '1') || (readbyte[1] == '2') ) ) // if string is S0, S1 or S2
     {
+      #if (_IGNORE_STARTVALUE_ == 0)
       while (startcount_i < 5) // lets not wait for the 6th byte "," or space whatever it is. This could crash/infinite loop if the WOTID frontend only sends 4 numbers (like 9999 for example) 
       {
         available_bytes = Serial.available();
@@ -134,22 +135,27 @@ void loop() {
           startcount_i++;
         }
       }
+      #endif
+      #if (_IGNORE_STARTVALUE_ == 1)
+        startcount = 0;
+      #endif
+      
       Calc_Start(readbyte,startcount);
       return;
     }
     else if ( (readbyte[0] == 'G') || (readbyte[0] == 'g') )
     {
-      Gear_Ratio(startcount); // Does this accept the "StartValue" ?
+      Gear_Ratio(); // Does this accept the "StartValue" ?
       return;
     }
     else if ( (readbyte[0] == 'T') || (readbyte[0] == 't') )
     {
-      Test(startcount); // Does this accept the "StartValue" ?
+      Test(); // Does this accept the "StartValue" ?
       return;
     }
     else if ( (readbyte[0] == 'R') || (readbyte[0] == 'r') )
     {
-      Run_Down(startcount); // Does this accept the "StartValue" ?
+      Run_Down(); // Does this accept the "StartValue" ?
       return;
     }
     else
@@ -196,6 +202,10 @@ void About() //  Fairly self explaitory.  It will dump this info
   #if (_EXTERNAL_RPM_SENSOR_ == 1)
     Serial.print("External RPM Sensor ON, ");
   #endif
+  
+  #if (_IGNORE_STARTVALUE_ == 1)
+    Serial.print("Ignore Start Value ON, ");
+  #endif
     
   #if (_LOGGING_ == 1)
     Serial.print("Logging ON (");
@@ -217,31 +227,28 @@ void Calc_Start(int readbyte [], long int startcount)
   {
     #if (_SIMULATE_DRUM_ == 1)
       simulate_dynorun(readbyte, startcount);
-      return;
     #else
-     Drum_Only(startcount);
-     return;
+      Drum_Only();
     #endif
+    return;
   }
   else if (!(readbyte[1] == '0') && (startcount == 0)) // readbyte[1] is the 2nd byte: 0 for no spark pulses, 1 for spark every revolution, 2 for every 2nd revolution
   {    
     #if (_SIMULATE_DRUM_ == 1)
       simulate_dynorun(readbyte, startcount);
-      return;
     #else
-     Drum_RPM(startcount);
-     return;
+      Drum_RPM();
     #endif
+    return;
   }
   else if (startcount > 0)
   {
     #if (_SIMULATE_DRUM_ == 1)
       simulate_dynorun(readbyte, startcount);
-      return;
     #else
       Auto_Start(readbyte, startcount);
-      return;
     #endif
+    return;
   }
   else
   {
@@ -252,7 +259,7 @@ void Calc_Start(int readbyte [], long int startcount)
 
 
 
-void Gear_Ratio(long int startcount) {
+void Gear_Ratio() {
 /*
   The gear ratio is determined by holding the engine at a CONSTANT 4000rpm
   and then the drum is measured.  Because the engine is at a known state
@@ -271,21 +278,19 @@ void Gear_Ratio(long int startcount) {
     sample[0] = pulseIn(_DRUM_HILO_, HIGH); // measure how long the tooth is on for, store it in "sample1"
     sample[1] = pulseIn(_DRUM_HILO_, LOW); // measure how long the tooth is off for
 
-  if (sample[0] < startcount) // if sample[0] is slower than what the frontend asked (StartValue), don't send it
     print_dec(sample);
   }
   Ending_Run();
   return;
 }
 
-void Test(long int startcount) {                           //  This just makes sure its spitting out data correctly
+void Test() {                           //  This just makes sure its spitting out data correctly
   long int sample[1];                        // for the front end to see / calculate.
   
   for(int x = 0; x < 15; x++) // loop this function set 15x, thats what the frontend wants
   {
     sample[0] = pulseIn(_DRUM_HILO_, HIGH); // measure how long the tooth is on for, store it in "sample1"
     
-  if (sample[0] < startcount) // if sample[0] is slower than what the frontend asked (StartValue), don't send it
     print_dec(sample);
   }
   Ending_Run();
@@ -304,12 +309,12 @@ void Auto_Start(int readbyte [], long int startcount){
   }
   else if ( (sample[0] < startcount) && (readbyte[1] == '0') ) // if drum input is less than startvalue AND readbyte DOES = 0 is in reference to S0 (0 for no spark pulses)
   {
-    Drum_Only(startcount);
+    Drum_Only();
     return;
   }
   else if ( (sample[0] < startcount) && !(readbyte[1] == '0') ) // if drum input is less than startvalue AND readbyte DOES NOT = 0, Sx is either S1 or S2 (1 for spark every revolution, 2 for every 2nd revolution)
   {
-    Drum_RPM(startcount);
+    Drum_RPM();
     return;
   }
   else
@@ -320,15 +325,14 @@ void Auto_Start(int readbyte [], long int startcount){
   return;
 }
 
-void Run_Down(long int startcount) {
+void Run_Down() {
   long int sample[3];
   
   sample[0] = pulseIn(_DRUM_HILO_, HIGH); // measure how long the tooth is on for, store it in "sample1"
   sample[1] = pulseIn(_DRUM_HILO_, LOW); // measure how long the tooth is off for
   sample[2] = 0;
 
-  if (sample[0] < startcount) // if sample[0] is slower than what the frontend asked (StartValue), don't send it
-    print_hex(sample);
+  print_hex(sample);
     
   if (sample[0] > sample[1])
   {
@@ -337,7 +341,7 @@ void Run_Down(long int startcount) {
   }
   else
   {
-    Run_Down(startcount);
+    Run_Down();
     return;
   }
   return;
@@ -348,15 +352,14 @@ void Ending_Run() {
   return;
 }
 
-void Drum_Only(long int startcount){
+void Drum_Only(){
   long int sample[3];
   
   sample[0] = pulseIn(_DRUM_HILO_, HIGH); // measure how long the tooth is on for, store it in "sample1"
   sample[1] = pulseIn(_DRUM_HILO_, LOW); // measure how long the tooth is off for
   sample[2] = 0;
 
-  if (sample[0] < startcount) // if sample[0] is slower than what the frontend asked (StartValue), don't send it
-    print_hex(sample);
+  print_hex(sample);
     
   if (sample[0] < sample[1])
   {
@@ -365,13 +368,13 @@ void Drum_Only(long int startcount){
   }
   else
   {
-    Drum_Only(startcount);
+    Drum_Only();
     return;
   }
   return;
 }
 
-void Drum_RPM(long int startcount){
+void Drum_RPM(){
   long int sample[3];
   
   sample[0] = pulseIn(_DRUM_HILO_, HIGH);
@@ -383,8 +386,7 @@ void Drum_RPM(long int startcount){
     sample[2] = 0;
   #endif
 
-  if (sample[0] < startcount) // if sample[0] is slower than what the frontend asked (StartValue), don't send it
-    print_hex(sample);
+  print_hex(sample);
     	
   if (sample[0] < sample[1])
   {
@@ -393,7 +395,7 @@ void Drum_RPM(long int startcount){
   }
   else
   {
-    Drum_RPM(startcount);
+    Drum_RPM();
     return;
   }
   
@@ -501,51 +503,6 @@ void simulate_dynorun(int readbyte[], long int startcount) // use startcount to 
   return;
 }
 #endif
-
-// Let's analyze the provided character
-void analyze_character(int character)
-{
-  Serial.print("Received character: ");
-  Serial.println(character,BYTE);
-
-  if (isalpha(character))
-    Serial.println("byte is alphabetical");
-
-  if (isdigit(character))
-    Serial.println("byte is numerical");
-
-  if (isblank(character))
-    Serial.println("byte is a blank character");
-
-  if (iscntrl(character))
-    Serial.println("byte is a control character");
-
-  if (isgraph(character))
-    Serial.println("byte is graphic character");
-
-  if (islower(character))
-    Serial.println("byte is lowercase");
-
-  if (isupper(character))
-    Serial.println("byte is uppercase");
-
-  if (ispunct(character))
-    Serial.println("byte is punctuation");
-
-  if (isspace(character))
-    Serial.println("byte is a whitespace (tab)");
-
-  if (isxdigit(character))
-    Serial.println("byte is hexadecimal");
-
-  if (isascii(character))
-    Serial.println("byte is a ASCII character");
-
-  if (character == ',')
-    Serial.println("byte is a carriage return");
-
-  return;
-}
 
 // Usage, if there are 2 samples, then you would do "print_hex(2,sample1, sample2, 0);" or if you had 3 samples then "print_hex(3,sample1, sample2, sample3);" or only 1 sample then "print_hex(1,sample1, 0, 0);"
 void print_hex(long int sample [])
