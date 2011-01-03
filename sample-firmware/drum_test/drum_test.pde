@@ -132,9 +132,9 @@ void calculate_rpm(long sample[])
   }
 
   Serial.print("RPM: ");
-  Serial.print(rpm);
+  Serial.print(rpm,2);
   Serial.print("   KM/H: ");
-  Serial.print(kmh);
+  Serial.print(kmh,2);
   return;
 }
 
