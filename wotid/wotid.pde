@@ -139,17 +139,17 @@ void loop() {
     }
     else if ( (readbyte[0] == 'G') || (readbyte[0] == 'g') )
     {
-      Gear_Ratio(); // Does this accept the "StartValue" ?
+      Gear_Ratio(startcount); // Does this accept the "StartValue" ?
       return;
     }
     else if ( (readbyte[0] == 'T') || (readbyte[0] == 't') )
     {
-      Test(); // Does this accept the "StartValue" ?
+      Test(startcount); // Does this accept the "StartValue" ?
       return;
     }
     else if ( (readbyte[0] == 'R') || (readbyte[0] == 'r') )
     {
-      Run_Down(); // Does this accept the "StartValue" ?
+      Run_Down(startcount); // Does this accept the "StartValue" ?
       return;
     }
     else
@@ -219,7 +219,7 @@ void Calc_Start(int readbyte [], long int startcount)
       simulate_dynorun(readbyte, startcount);
       return;
     #else
-     Drum_Only();
+     Drum_Only(startcount);
      return;
     #endif
   }
@@ -229,7 +229,7 @@ void Calc_Start(int readbyte [], long int startcount)
       simulate_dynorun(readbyte, startcount);
       return;
     #else
-     Drum_RPM();
+     Drum_RPM(startcount);
      return;
     #endif
   }
@@ -252,7 +252,7 @@ void Calc_Start(int readbyte [], long int startcount)
 
 
 
-void Gear_Ratio() {
+void Gear_Ratio(long int startcount) {
 /*
   The gear ratio is determined by holding the engine at a CONSTANT 4000rpm
   and then the drum is measured.  Because the engine is at a known state
@@ -271,19 +271,21 @@ void Gear_Ratio() {
     sample[0] = pulseIn(_DRUM_HILO_, HIGH); // measure how long the tooth is on for, store it in "sample1"
     sample[1] = pulseIn(_DRUM_HILO_, LOW); // measure how long the tooth is off for
 
+  if (sample[0] < startcount) // if sample[0] is slower than what the frontend asked (StartValue), don't send it
     print_dec(sample);
   }
   Ending_Run();
   return;
 }
 
-void Test() {                           //  This just makes sure its spitting out data correctly
+void Test(long int startcount) {                           //  This just makes sure its spitting out data correctly
   long int sample[1];                        // for the front end to see / calculate.
   
   for(int x = 0; x < 15; x++) // loop this function set 15x, thats what the frontend wants
   {
     sample[0] = pulseIn(_DRUM_HILO_, HIGH); // measure how long the tooth is on for, store it in "sample1"
     
+  if (sample[0] < startcount) // if sample[0] is slower than what the frontend asked (StartValue), don't send it
     print_dec(sample);
   }
   Ending_Run();
@@ -302,12 +304,12 @@ void Auto_Start(int readbyte [], long int startcount){
   }
   else if ( (sample[0] < startcount) && (readbyte[1] == '0') ) // if drum input is less than startvalue AND readbyte DOES = 0 is in reference to S0 (0 for no spark pulses)
   {
-    Drum_Only();
+    Drum_Only(startcount);
     return;
   }
   else if ( (sample[0] < startcount) && !(readbyte[1] == '0') ) // if drum input is less than startvalue AND readbyte DOES NOT = 0, Sx is either S1 or S2 (1 for spark every revolution, 2 for every 2nd revolution)
   {
-    Drum_RPM();
+    Drum_RPM(startcount);
     return;
   }
   else
@@ -318,14 +320,15 @@ void Auto_Start(int readbyte [], long int startcount){
   return;
 }
 
-void Run_Down() {
+void Run_Down(long int startcount) {
   long int sample[3];
   
   sample[0] = pulseIn(_DRUM_HILO_, HIGH); // measure how long the tooth is on for, store it in "sample1"
   sample[1] = pulseIn(_DRUM_HILO_, LOW); // measure how long the tooth is off for
   sample[2] = 0;
 
-  print_hex(sample);
+  if (sample[0] < startcount) // if sample[0] is slower than what the frontend asked (StartValue), don't send it
+    print_hex(sample);
     
   if (sample[0] > sample[1])
   {
@@ -334,7 +337,7 @@ void Run_Down() {
   }
   else
   {
-    Run_Down();
+    Run_Down(startcount);
     return;
   }
   return;
@@ -345,14 +348,15 @@ void Ending_Run() {
   return;
 }
 
-void Drum_Only(){
+void Drum_Only(long int startcount){
   long int sample[3];
   
   sample[0] = pulseIn(_DRUM_HILO_, HIGH); // measure how long the tooth is on for, store it in "sample1"
   sample[1] = pulseIn(_DRUM_HILO_, LOW); // measure how long the tooth is off for
   sample[2] = 0;
 
-  print_hex(sample);
+  if (sample[0] < startcount) // if sample[0] is slower than what the frontend asked (StartValue), don't send it
+    print_hex(sample);
     
   if (sample[0] < sample[1])
   {
@@ -361,13 +365,13 @@ void Drum_Only(){
   }
   else
   {
-    Drum_Only();
+    Drum_Only(startcount);
     return;
   }
   return;
 }
 
-void Drum_RPM(){
+void Drum_RPM(long int startcount){
   long int sample[3];
   
   sample[0] = pulseIn(_DRUM_HILO_, HIGH);
@@ -379,7 +383,8 @@ void Drum_RPM(){
     sample[2] = 0;
   #endif
 
-  print_hex(sample);
+  if (sample[0] < startcount) // if sample[0] is slower than what the frontend asked (StartValue), don't send it
+    print_hex(sample);
     	
   if (sample[0] < sample[1])
   {
@@ -388,7 +393,7 @@ void Drum_RPM(){
   }
   else
   {
-    Drum_RPM();
+    Drum_RPM(startcount);
     return;
   }
   
@@ -459,8 +464,9 @@ void simulate_dynorun(int readbyte[], long int startcount) // use startcount to 
         sample[0] = highest1;
         sample[1] = highest2;
         sample[2] = 0;
-
-        print_hex(sample);
+        
+        if (sample[0] < startcount) // if sample[0] is slower than what the frontend asked (StartValue), don't send it
+          print_hex(sample);
 
         delay(delay_timer);
 	i++;
@@ -481,7 +487,8 @@ void simulate_dynorun(int readbyte[], long int startcount) // use startcount to 
         if ((readbyte[1] == '2') && (i % 2 == 0)) // emulate spark pulse every 2nd revolution
           sample[2] = 0; 
           
-        print_hex(sample);
+        if (sample[0] < startcount) // if sample[0] is slower than what the frontend asked (StartValue), don't send it
+          print_hex(sample);
 
         delay(delay_timer);
 	i++;
