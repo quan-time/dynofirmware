@@ -61,7 +61,7 @@ void loop()
       Serial.print(sample[0]);
       Serial.print("μs   Tooth OFF: ");
       Serial.print(sample[1]);
-      Serial.print("μs  Difference: ");
+      Serial.print("μs   Difference: ");
      
       calculate_difference(sample);     
       
@@ -78,7 +78,7 @@ void calculate_difference(long sample[])
 {
   if (sample[0] > sample[1])
   {
-    int count_deceleration = 0; // reset back to 0
+    count_deceleration = 0; // reset back to 0
     Serial.print("+");
     Serial.print( (sample[0]-sample[1]) );
     Serial.print("μs (Drum Speeding UP)");
@@ -166,30 +166,3 @@ void print_wotid(int samples, long sample [])
   
   return;
 }
-
-
-/*void Drum_Only(){
-  int sample[3];
-  
-  sample[0] = pulseIn(Drum_HiLo, HIGH); // measure how long the tooth is on for, store it in "sample1"
-  sample[1] = pulseIn(Drum_HiLo, LOW); // measure how long the tooth is off for
-  sample[2] = 0;
-
-  print_hex(3,sample);
-    
-  if (sample[0] < sample[1])
-  {
-    Ending_Run();
-    if (allow_recursion == 1)
-      return;
-  }
-  else
-  {
-    Drum_Only();
-    if (allow_recursion == 1)
-      return;
-  }
-  
-  if (allow_recursion == 1)
-    return;
-}*/
