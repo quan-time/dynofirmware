@@ -25,12 +25,14 @@
   _SIMULATE_DRUM_         0 = OFF, 1 = ON  (Simulate Dynorun when "Make Run" is started in WOTID, turning this off uses the real Drum)
   _COM_BAUD_              19200            (Serial connection baud rate)
   _DEBUG_                 0 = OFF, 1 = ON  (Debug information, useless to the WOTID frontend, only useful with a terminal connected)
-  _EXTERNAL_RPM_SENSOR_   0 = OFF, 1 = ON  (Whether or not there is an external RPM sensor, use _RPM_HILO_ to specify the Pin it's connected to)
+  _EXTERNAL_RPM_SENSOR_   0 = OFF, 1 = ON  (Whether or not there is an external RPM sensor, use _RPM_HILO_ below to specify the Pin it's connected to)
   _PIN_                   0                (Which Pin to make a Serial connection with)
-  _RPM_HILO_              0                (Which Pin the RPM sensor is connected to)
   _DRUM_HILO_             0                (Which Pin the Drum sensor is connected to)
   _IGNORE_STARTVALUE_     0 = OFF, 1 = ON  (Ignore the minimum start value (km/h) specified by WOTID, setting this to 1 will send all data to WOTID, even if it's below the start value)
-  
+  _MAXIMUM_MICROSECOND_   65535            (WOTID only accepts hexadecimal values up to FFFF, which is 65535)
+  _STARTCOUNT_BUFFER_     5                (Maximum ammount of bytes WOTID will send, when issuing "StartValue")
+  _OPTICAL_TIMEOUT_       1000000          (Maximum ammount of time in microseconds that the firmware will wait for a reply from the optical sensor, Arduino default is 1s, we could make it 100ms since the slowest sample we can send is 65.535ms)
+  _SERIAL_BUFFER_         8                (Ammount of bytes that should be pre-allocated to read the serial connection's buffer with, I've determined 8 is plenty "S065535," is the longest string I've seen the frontend generate)
 */
 #define _LOGGING_ 0
 #define _SIMULATE_DRUM_ 0
@@ -40,6 +42,10 @@
 #define _PIN_ 0
 #define _DRUM_HILO_ 0
 #define _IGNORE_STARTVALUE_ 0
+#define _MAXIMUM_MICROSECOND_ 65535
+#define _STARTCOUNT_BUFFER_ 5
+#define _OPTICAL_TIMEOUT_ 1000000
+#define _SERIAL_BUFFER_ 8
 /* End Configuration */ 
 
 /* 
@@ -57,16 +63,23 @@
 #endif
 /* End Logging Configuration */
 
-/* External RPM Sensor Configuration */
-#define _RPM_HILO_ 0 // Pin RPM Sensor is connected to
+/* 
+  External RPM Sensor Configuration
+
+  _RPM_HILO_  0  (Which Pin the RPM sensor is connected to)
+  
+*/
+#define _RPM_HILO_ 0
 
 /* Global Variables */
-int bytesreceived = 0; // Count how many bytes the WOTID frontend has sent the firmware
+int bytesreceived = 0; // Count how many bytes the WOTID frontend has sent the firmware, only counts the important data, ignores B12345 in AB12345 for example (WOTID about string)
 int startup = 0; // Used to calculate uptime
+int current_line = 0; // Keep track of how many lines have been saved in memory so far, I really should change this to a local variable.. global variables are evil.
+
+/* Logging Global Variables */
 #if (_LOGGING_ == 1)
-  char playback_string[_MAX_LINES_][_LINE_LENGTH_]; // _MAX_LINES_ * _LINE_LENGTH = the ammount of bytes this will allocate (200 * 15 = 3000bytes for example, Teensy++ 2.0 has 8192 bytes total)
-  int playback_buttonState = 0; // Status of button, whether it's been pressed or not
-  int current_line = 0; // Keep track of how many lines have been saved in memory so far
+  char playback_string[_MAX_LINES_][_LINE_LENGTH_]; // _MAX_LINES_ * _LINE_LENGTH = the ammount of bytes this will allocate (200 * 15 = 3000bytes for example, Teensy++ 2.0 has 8192 bytes total), this really should be made a local variable somehow, it's an evil global variable
+  int playback_buttonState = 0; // Status of button, whether it's been pressed or notr
 #endif
 
 void setup() // main function set
@@ -78,20 +91,18 @@ void setup() // main function set
     pinMode(_PLAYBACK_PIN_, INPUT); // Pin 5 to playback current data
   #endif
   
-  startup = millis();
+  startup = millis(); // how many milliseconds have passed since the unix epoch (start from jan 1st 1970), we use this to mark when the Teensy unit was rebooted/started
 }
 
 void loop() {        
   int available_bytes = 0;
-  int buffer = 8; // allocate 8 bytes, completely overkill..
-  int readbyte[buffer];
+  int readbyte[_SERIAL_BUFFER_];
   int i = 0;
   int arrayposition = 0;
   
   //'Where SSSSS is for 0 to 65535 for start figures
   //'S1,23400<cr> = Start,Spark every rev,23400 start count.
-  #define startcount_buffer 5
-  int startcount_input[startcount_buffer] = { 0, 0, 0, 0, 0 }; // maybe default to 65535
+  int startcount_input[_STARTCOUNT_BUFFER_] = { 0, 0, 0, 0, 0 }; // maybe default to 65535
   long int startcount = 0; // hold "StartValue"
   int startcount_i = 0;
   
@@ -131,7 +142,10 @@ void loop() {
         if (available_bytes > 0)
         {
           startcount_input[startcount_i] = Serial.read();
-          startcount = (startcount*10 + (startcount_input[startcount_i] - 48)); // we take 48 away because 49 is the ASCII code for 1, so 50 - 49 = 1.. if startcount_input were 2, then it would be the ASCII code 50, take 48 and we have the number 2
+          
+          if ((startcount_input[startcount_i] >= 48) && (startcount_input[startcount_i] <= 57)) // if byte is equal to/greater than 49, and equal to/less than 57.. this means the ASCII code is a number between 0 and 9 (because we don't want to try to do multiplication below on an alphabetical letter for example)
+            startcount = (startcount*10 + (startcount_input[startcount_i] - 48)); // we take 48 away because 49 is the ASCII code for 1, so 50 - 49 = 1.. if startcount_input were 2, then it would be the ASCII code 50, take 48 and we have the number 2
+          
           startcount_i++;
         }
       }
@@ -145,17 +159,17 @@ void loop() {
     }
     else if ( (readbyte[0] == 'G') || (readbyte[0] == 'g') )
     {
-      Gear_Ratio(); // Does this accept the "StartValue" ?
+      Gear_Ratio();
       return;
     }
     else if ( (readbyte[0] == 'T') || (readbyte[0] == 't') )
     {
-      Test(); // Does this accept the "StartValue" ?
+      Test();
       return;
     }
     else if ( (readbyte[0] == 'R') || (readbyte[0] == 'r') )
     {
-      Run_Down(); // Does this accept the "StartValue" ?
+      Run_Down();
       return;
     }
     else
@@ -187,9 +201,12 @@ void About() //  Fairly self explaitory.  It will dump this info
   Serial.println(bytesreceived);
   Serial.print("Config options: ");
 
-  Serial.print("INPUT: Pin ");
+  Serial.print("Optical In: Pin ");
   Serial.print(_PIN_);
-  Serial.print(", ");
+  Serial.print(" (timeout: ");
+  
+  Serial.print( (_OPTICAL_TIMEOUT_ / 1000) );
+  Serial.print("ms) ");
   
   #if (_DEBUG_ == 1)
     Serial.print("Debug ON, ");
@@ -275,9 +292,10 @@ void Gear_Ratio() {
 
   for(int x = 0; x < 10; x++) // loop this function set 10x, thats what the frontend wants
   {
-    sample[0] = pulseIn(_DRUM_HILO_, HIGH); // measure how long the tooth is on for, store it in "sample1"
-    sample[1] = pulseIn(_DRUM_HILO_, LOW); // measure how long the tooth is off for
+    sample[0] = pulseIn(_DRUM_HILO_, HIGH, _OPTICAL_TIMEOUT_); // measure how long the tooth is on for, store it in "sample1"
+    sample[1] = pulseIn(_DRUM_HILO_, LOW, _OPTICAL_TIMEOUT_); // measure how long the tooth is off for
 
+    // Should we check if these samples are greater than _MAXIMUM_MICROSECOND_ (65535) first? no because the frontend accepts a decimal value
     print_dec(sample);
   }
   Ending_Run();
@@ -291,6 +309,7 @@ void Test() {                           //  This just makes sure its spitting ou
   {
     sample[0] = pulseIn(_DRUM_HILO_, HIGH); // measure how long the tooth is on for, store it in "sample1"
     
+    // Should we check if these samples are greater than _MAXIMUM_MICROSECOND_ (65535) first? no because the frontend accepts a decimal value
     print_dec(sample);
   }
   Ending_Run();
@@ -300,7 +319,7 @@ void Test() {                           //  This just makes sure its spitting ou
 void Auto_Start(int readbyte [], long int startcount){
   long int sample[1];
   
-  sample[0] = pulseIn(_DRUM_HILO_, HIGH); // measure how long the tooth is on for, store it in "sample1"
+  sample[0] = pulseIn(_DRUM_HILO_, HIGH, _OPTICAL_TIMEOUT_); // measure how long the tooth is on for, store it in "sample1"
   
   if (sample[0] == 0) // drum input timed out after 1 second of no input, try again immediately
   {
@@ -328,6 +347,7 @@ void Auto_Start(int readbyte [], long int startcount){
 void Run_Down() {
   long int sample[3];
   
+  // We need to detect that the drum is slowing down, so I don't think _OPTICAL_TIMEOUT_ applies here, it will default to 1 second anyway (set by Arduino).. perhaps we should even allow up to 10 second timeouts
   sample[0] = pulseIn(_DRUM_HILO_, HIGH); // measure how long the tooth is on for, store it in "sample1"
   sample[1] = pulseIn(_DRUM_HILO_, LOW); // measure how long the tooth is off for
   sample[2] = 0;
@@ -347,16 +367,18 @@ void Run_Down() {
   return;
 }
 
+// Perhaps we could use this function later to free memory we've used so far
 void Ending_Run() {
   Serial.println("T");
   return;
 }
 
+// AS the name suggests, just the drum without RPM input
 void Drum_Only(){
   long int sample[3];
   
-  sample[0] = pulseIn(_DRUM_HILO_, HIGH); // measure how long the tooth is on for, store it in "sample1"
-  sample[1] = pulseIn(_DRUM_HILO_, LOW); // measure how long the tooth is off for
+  sample[0] = pulseIn(_DRUM_HILO_, HIGH, _OPTICAL_TIMEOUT_); // measure how long the tooth is on for, store it in "sample1"
+  sample[1] = pulseIn(_DRUM_HILO_, LOW, _OPTICAL_TIMEOUT_); // measure how long the tooth is off for
   sample[2] = 0;
 
   print_hex(sample);
@@ -374,14 +396,15 @@ void Drum_Only(){
   return;
 }
 
+// Drum + RPM input
 void Drum_RPM(){
   long int sample[3];
   
-  sample[0] = pulseIn(_DRUM_HILO_, HIGH);
-  sample[1] = pulseIn(_DRUM_HILO_, LOW);
+  sample[0] = pulseIn(_DRUM_HILO_, HIGH, _OPTICAL_TIMEOUT_);
+  sample[1] = pulseIn(_DRUM_HILO_, LOW, _OPTICAL_TIMEOUT_);
 
   #if (_EXTERNAL_RPM_SENSOR_ == 1)
-    sample[2] = pulseIn(_RPM_HILO_, HIGH);
+    sample[2] = pulseIn(_RPM_HILO_, HIGH); // timeout will default to 1second (Arduino)
   #else
     sample[2] = 0;
   #endif
@@ -437,6 +460,7 @@ void playback_rawdata()
 #endif
 
 #if (_SIMULATE_DRUM_ == 1)
+#define _DELAY_TIMER_ 1 // specify delay in milliseconds to messages sent to the front end
 void simulate_dynorun(int readbyte[], long int startcount) // use startcount to not send data slower than WOTID asks
 {
   int highest1 = 20750; // 510E.. 510E,xxxx,x
@@ -447,7 +471,6 @@ void simulate_dynorun(int readbyte[], long int startcount) // use startcount to 
   int highrpm = 9000;
   int samples = 30; // how many lines to send to the front end
   int i = 0;
-  int delay_timer = 1; // specify delay in milliseconds to messages sent to the front end
   long int sample[3];
 
   int difference1 = ((highest1 - lowest1) / samples);
@@ -467,10 +490,14 @@ void simulate_dynorun(int readbyte[], long int startcount) // use startcount to 
         sample[1] = highest2;
         sample[2] = 0;
         
-        if (sample[0] < startcount) // if sample[0] is slower than what the frontend asked (StartValue), don't send it
+        #if (_IGNORE_STARTVALUE_ == 0)
+          if (sample[0] < startcount) // if sample[0] is slower than what the frontend asked (StartValue), don't send it
+            print_hex(sample);
+        #else
           print_hex(sample);
+        #endif
 
-        delay(delay_timer);
+        delay(_DELAY_TIMER_);
 	i++;
     }
   }
@@ -489,10 +516,14 @@ void simulate_dynorun(int readbyte[], long int startcount) // use startcount to 
         if ((readbyte[1] == '2') && (i % 2 == 0)) // emulate spark pulse every 2nd revolution
           sample[2] = 0; 
           
-        if (sample[0] < startcount) // if sample[0] is slower than what the frontend asked (StartValue), don't send it
+        #if (_IGNORE_STARTVALUE_ == 0)
+          if (sample[0] < startcount) // if sample[0] is slower than what the frontend asked (StartValue), don't send it
+            print_hex(sample);
+        #else
           print_hex(sample);
+        #endif
 
-        delay(delay_timer);
+        delay(_DELAY_TIMER_);
 	i++;
     }
   }
@@ -504,10 +535,16 @@ void simulate_dynorun(int readbyte[], long int startcount) // use startcount to 
 }
 #endif
 
-// Usage, if there are 2 samples, then you would do "print_hex(2,sample1, sample2, 0);" or if you had 3 samples then "print_hex(3,sample1, sample2, sample3);" or only 1 sample then "print_hex(1,sample1, 0, 0);"
+// The function that actually sends the HEX numbers to the frontend
 void print_hex(long int sample [])
 {
   int samples = (sizeof(sample)+1);
+  
+  if (sample[0] > _MAXIMUM_MICROSECOND_) // if sample1 (sample[0]) is greater than 65535
+    sample[0] = _MAXIMUM_MICROSECOND_; // if sample[0] were 130000 microseconds, we wouldn't be able to send it as a 4 char HEX code, as it is represented as 1FBD0 in HEX (5 chars)
+  
+  if (sample[1] > _MAXIMUM_MICROSECOND_) // same as above
+    sample[1] = _MAXIMUM_MICROSECOND_;
   
   #if (_DEBUG_ == 1)
     Serial.print("Ammount of samples: ");
