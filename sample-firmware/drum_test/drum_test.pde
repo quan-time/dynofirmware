@@ -41,13 +41,15 @@ void loop()
   }    
   if (sample[0] == 0)
   {
-    Serial.println("Received nothing (HIGH) from Drum, timed out");
+    Serial.print("Received nothing (HIGH) from Drum, timed out (seconds): ");
+    Serial.println(timeout / 1000 / 1000);
     delay(1000); // wait 1 seconds before we try again?
     return;
   }
   else if (sample[1] == 0)
   {
-    Serial.println("Received nothing (LOW) from Drum, timed out");
+    Serial.println("Received nothing (LOW) from Drum, timed out (seconds): ");
+    Serial.println(timeout / 1000 / 1000);
     delay(1000); // wait 1 seconds before we try again?
     return;
   }
