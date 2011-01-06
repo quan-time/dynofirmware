@@ -33,6 +33,7 @@
   _STARTCOUNT_BUFFER_     5                (Maximum ammount of bytes WOTID will send, when issuing "StartValue")
   _OPTICAL_TIMEOUT_       1000000          (Maximum ammount of time in microseconds that the firmware will wait for a reply from the optical sensor, Arduino default is 1s, we could make it 100ms since the slowest sample we can send is 65.535ms)
   _SERIAL_BUFFER_         8                (Ammount of bytes that should be pre-allocated to read the serial connection's buffer with, I've determined 8 is plenty "S065535," is the longest string I've seen the frontend generate)
+  _FILTER_SLOW_SAMPLES_   0 = OFF, 1 = ON  (How we handle optical sensor values that are greater than _MAXIMUM_MICROSECOND_, 1 turns this on by filtering them so they don't appear in WOTID, 0 turns this off and just sends the value as 65535 instead)
 */
 #define _LOGGING_ 0
 #define _SIMULATE_DRUM_ 0
@@ -46,6 +47,7 @@
 #define _STARTCOUNT_BUFFER_ 5
 #define _OPTICAL_TIMEOUT_ 1000000
 #define _SERIAL_BUFFER_ 8
+#define _FILTER_SLOW_SAMPLES_ 1
 /* End Configuration */ 
 
 /* 
@@ -535,16 +537,21 @@ void simulate_dynorun(int readbyte[], long int startcount) // use startcount to 
 }
 #endif
 
-// The function that actually sends the HEX numbers to the frontend
+// The function that actually sends the HEX numbers to the frontend like: FFFF,FFFF,0 which in decimal means 65535,65535,0
 void print_hex(long int sample [])
 {
   int samples = (sizeof(sample)+1);
   
-  if (sample[0] > _MAXIMUM_MICROSECOND_) // if sample1 (sample[0]) is greater than 65535
-    sample[0] = _MAXIMUM_MICROSECOND_; // if sample[0] were 130000 microseconds, we wouldn't be able to send it as a 4 char HEX code, as it is represented as 1FBD0 in HEX (5 chars)
-  
-  if (sample[1] > _MAXIMUM_MICROSECOND_) // same as above
-    sample[1] = _MAXIMUM_MICROSECOND_;
+  #if (_FILTER_SLOW_SAMPLES_ == 0)
+    if (sample[0] > _MAXIMUM_MICROSECOND_) // if sample1 (sample[0]) is greater than 65535
+      sample[0] = _MAXIMUM_MICROSECOND_; // if sample[0] were 130000 microseconds, we wouldn't be able to send it as a 4 char HEX code, as it is represented as 1FBD0 in HEX (5 chars)
+    
+    if (sample[1] > _MAXIMUM_MICROSECOND_) // same as above
+      sample[1] = _MAXIMUM_MICROSECOND_;
+  #else
+    if ((sample[0] > _MAXIMUM_MICROSECOND_) || (sample[1] > _MAXIMUM_MICROSECOND_))
+      return; // if either of the above is true, then let's filter out this result and exit out of this function
+  #endif 
   
   #if (_DEBUG_ == 1)
     Serial.print("Ammount of samples: ");
@@ -557,7 +564,7 @@ void print_hex(long int sample [])
     Serial.print(sample[3]);
     Serial.println("");
   #endif
-
+  
   if (samples == 1)
   {
     Serial.print(sample[0],HEX);
