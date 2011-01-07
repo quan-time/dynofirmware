@@ -19,21 +19,25 @@
 //------------------------------------------------------------------------------
 
 /*
-  Start Configuration
+  Start Configuration:
   
-  _LOGGING_               0 = OFF, 1 = ON  (Logging eats up the unit's memory)
-  _SIMULATE_DRUM_         0 = OFF, 1 = ON  (Simulate Dynorun when "Make Run" is started in WOTID, turning this off uses the real Drum)
-  _COM_BAUD_              19200            (Serial connection baud rate)
-  _DEBUG_                 0 = OFF, 1 = ON  (Debug information, useless to the WOTID frontend, only useful with a terminal connected)
-  _EXTERNAL_RPM_SENSOR_   0 = OFF, 1 = ON  (Whether or not there is an external RPM sensor, use _RPM_HILO_ below to specify the Pin it's connected to)
-  _PIN_                   0                (Which Pin to make a Serial connection with)
-  _DRUM_HILO_             0                (Which Pin the Drum sensor is connected to)
-  _IGNORE_STARTVALUE_     0 = OFF, 1 = ON  (Ignore the minimum start value (km/h) specified by WOTID, setting this to 1 will send all data to WOTID, even if it's below the start value)
-  _MAXIMUM_MICROSECOND_   65535            (WOTID only accepts hexadecimal values up to FFFF, which is 65535)
-  _STARTCOUNT_BUFFER_     5                (Maximum ammount of bytes WOTID will send, when issuing "StartValue")
-  _OPTICAL_TIMEOUT_       1000000          (Maximum ammount of time in microseconds that the firmware will wait for a reply from the optical sensor, Arduino default is 1s, we could make it 100ms since the slowest sample we can send is 65.535ms)
-  _SERIAL_BUFFER_         8                (Ammount of bytes that should be pre-allocated to read the serial connection's buffer with, I've determined 8 is plenty "S065535," is the longest string I've seen the frontend generate)
-  _FILTER_SLOW_SAMPLES_   0 = OFF, 1 = ON  (How we handle optical sensor values that are greater than _MAXIMUM_MICROSECOND_, 1 turns this on by filtering them so they don't appear in WOTID, 0 turns this off and just sends the value as 65535 instead)
+  Predefined Macro Name   Default Value (recommended) Description
+  
+  _LOGGING_               0       [0 = OFF, 1 = ON]  (Logging eats up the unit's memory)
+  _SIMULATE_DRUM_         0       [0 = OFF, 1 = ON]  (Simulate Dynorun when "Make Run" is started in WOTID, turning this off uses the real Drum)
+  _COM_BAUD_              19200                      (Serial connection baud rate)
+  _DEBUG_                 0       [0 = OFF, 1 = ON]  (Debug information, useless to the WOTID frontend, only useful with a terminal connected)
+  _EXTERNAL_RPM_SENSOR_   0       [0 = OFF, 1 = ON]  (Whether or not there is an external RPM sensor, use _RPM_HILO_ below to specify the Pin it's connected to)
+  _PIN_                   0                          (Which Pin to make a Serial connection with)
+  _DRUM_HILO_             0                          (Which Pin the Drum sensor is connected to)
+  _IGNORE_STARTVALUE_     0       [0 = OFF, 1 = ON]  (Ignore the minimum start value (km/h) specified by WOTID, setting this to 1 will send all data to WOTID, even if it's below the start value)
+  _STARTCOUNT_BUFFER_     5                          (Maximum ammount of bytes WOTID will send, when issuing "StartValue")
+  _OPTICAL_TIMEOUT_       1000000                    (Maximum ammount of time in microseconds that the firmware will wait for a reply from the optical sensor, Arduino default is 1s, we could make it 100ms since the slowest sample we can send is 65.535ms)
+  _SERIAL_BUFFER_         8                          (Ammount of bytes that should be pre-allocated to read the serial connection's buffer with, I've determined 8 is plenty "S065535," is the longest string I've seen the frontend generate)
+  _FILTER_SLOW_SAMPLES_   0       [0 = OFF, 1 = ON]  (How we handle optical sensor values that are greater than _MAXIMUM_MICROSECOND_, 1 turns this on by filtering them so they don't appear in WOTID, 0 turns this off and just sends the value as 65535 instead)
+  _CLOCK_FREQUENCY_       1                          (Has a huge affect on minimum starting speed. Measured in MHz, WOTID uses this value to divide every optical sensor value by, by setting a value that isn't 1 we override this behaviour and let the firmware do the math instead. 2 = 0.5, 1 = 1, 0.5 = 2, 0.225 = 4 etc.)
+  _MAXIMUM_MICROSECOND_   65535                      (WOTID only accepts hexadecimal values up to FFFF, which is 65535, related to minimum starting value, if _CLOCK_FREQUENCY_ changes from 1, we might need to automatically adjust our max to suit)
+  
 */
 #define _LOGGING_ 0
 #define _SIMULATE_DRUM_ 0
@@ -43,11 +47,13 @@
 #define _PIN_ 0
 #define _DRUM_HILO_ 0
 #define _IGNORE_STARTVALUE_ 0
-#define _MAXIMUM_MICROSECOND_ 65535
 #define _STARTCOUNT_BUFFER_ 5
 #define _OPTICAL_TIMEOUT_ 1000000
 #define _SERIAL_BUFFER_ 8
 #define _FILTER_SLOW_SAMPLES_ 1
+#define _CLOCK_FREQUENCY_ 1
+#define _MAXIMUM_MICROSECOND_ 65535
+//#define _MAXIMUM_MICROSECOND_ (int)(65535 / _CLOCK_FREQUENCY_) // not used
 /* End Configuration */ 
 
 /* 
@@ -77,14 +83,16 @@
 int bytesreceived = 0; // Count how many bytes the WOTID frontend has sent the firmware, only counts the important data, ignores B12345 in AB12345 for example (WOTID about string)
 int startup = 0; // Used to calculate uptime
 int current_line = 0; // Keep track of how many lines have been saved in memory so far, I really should change this to a local variable.. global variables are evil.
-
 /* Logging Global Variables */
 #if (_LOGGING_ == 1)
   char playback_string[_MAX_LINES_][_LINE_LENGTH_]; // _MAX_LINES_ * _LINE_LENGTH = the ammount of bytes this will allocate (200 * 15 = 3000bytes for example, Teensy++ 2.0 has 8192 bytes total), this really should be made a local variable somehow, it's an evil global variable
   int playback_buttonState = 0; // Status of button, whether it's been pressed or notr
 #endif
+/* End Logging Globals */
+/* End Global Variables */
 
-void setup() // main function set
+ // When Teensy is started or rebooted, this is the first function that is ran.
+void setup()
 {
   Serial.begin(_COM_BAUD_);  // setup connection, teensy++ is pure USB anyway, so this isnt hugely important to specify speed       
   pinMode(_PIN_, INPUT); // Pin 0 should be connected to the optical sensor
@@ -96,6 +104,7 @@ void setup() // main function set
   startup = millis(); // how many milliseconds have passed since the unix epoch (start from jan 1st 1970), we use this to mark when the Teensy unit was rebooted/started
 }
 
+// Our endless loop, With Arduino/Teensy there is no way to stop this loop, to save CPU cycles/power etc we could issue a delay(); otherwise optical sensor data is handled the instant it arrives
 void loop() {        
   int available_bytes = 0;
   int readbyte[_SERIAL_BUFFER_];
@@ -143,9 +152,9 @@ void loop() {
         available_bytes = Serial.available();
         if (available_bytes > 0)
         {
-          startcount_input[startcount_i] = Serial.read();
+          startcount_input[startcount_i] = Serial.read(); // If Serial.read() is the number 9 for example, startcount_input[startcount_i] will equal 57. Why 57 though? That's the ASCII code for this number.
           
-          if ((startcount_input[startcount_i] >= 48) && (startcount_input[startcount_i] <= 57)) // if byte is equal to/greater than 49, and equal to/less than 57.. this means the ASCII code is a number between 0 and 9 (because we don't want to try to do multiplication below on an alphabetical letter for example)
+          if ((startcount_input[startcount_i] >= '0') && (startcount_input[startcount_i] <= '9')) // if startcount_input[startcount_i] is any number between 0 & 9. (because we don't want to try to do multiplication below on an alphabetical letter for example)
             startcount = (startcount*10 + (startcount_input[startcount_i] - 48)); // we take 48 away because 49 is the ASCII code for 1, so 50 - 49 = 1.. if startcount_input were 2, then it would be the ASCII code 50, take 48 and we have the number 2
           
           startcount_i++;
@@ -537,21 +546,31 @@ void simulate_dynorun(int readbyte[], long int startcount) // use startcount to 
 }
 #endif
 
-// The function that actually sends the HEX numbers to the frontend like: FFFF,FFFF,0 which in decimal means 65535,65535,0
+// Common function used by all our code (even simulate_dynorun) that send Hexadecimal values over the serial link. The function that actually sends the HEX numbers to the frontend like: FFFF,FFFF,0 which in decimal means 65535,65535,0
 void print_hex(long int sample [])
 {
-  int samples = (sizeof(sample)+1);
-  
+  int samples = (sizeof(sample)+1); // WOTID always expects 3 hex values that are seperated by carriage returns so we could set this static to 3 isntead of determining how many array elements are in 'sample'
+
+  #if (!(_CLOCK_FREQUENCY_ == 1)) // if _CLOCK_FREQUENCY_ does NOT equal 1 (let'e not bother to divide by 1 as its a waste of time)
+    sample[0] = (sample[0] / _CLOCK_FREQUENCY_); // if sample[0] equals 65535, and _CLOCK_FREQUENCY_ equals 0.5, then sample[0] becomes 131070 (65535 / 0.5), or if _CLOCK_FREQUENCY_ equals 2, then sample[0] becomes 32767.5 (65535 / 2)
+    
+    if (samples > 1)
+      sample[1] = (sample[1] / _CLOCK_FREQUENCY_);
+    
+    if (_EXTERNAL_RPM_SENSOR_ == 1) // does WOTID apply "Clock Frequency" to RPM values? we probably won't know unless we actually provided it with RPM data by an external RPM sensor.
+      sample[2] = (sample[2] / _CLOCK_FREQUENCY_); 
+  #endif 
+
   #if (_FILTER_SLOW_SAMPLES_ == 0)
     if (sample[0] > _MAXIMUM_MICROSECOND_) // if sample1 (sample[0]) is greater than 65535
       sample[0] = _MAXIMUM_MICROSECOND_; // if sample[0] were 130000 microseconds, we wouldn't be able to send it as a 4 char HEX code, as it is represented as 1FBD0 in HEX (5 chars)
     
-    if (sample[1] > _MAXIMUM_MICROSECOND_) // same as above
+    if ((sample[1] > _MAXIMUM_MICROSECOND_) && (samples > 1)) // same as above, but also let's check there actually is a 2nd sample (LOW)
       sample[1] = _MAXIMUM_MICROSECOND_;
   #else
     if ((sample[0] > _MAXIMUM_MICROSECOND_) || (sample[1] > _MAXIMUM_MICROSECOND_))
       return; // if either of the above is true, then let's filter out this result and exit out of this function
-  #endif 
+  #endif
   
   #if (_DEBUG_ == 1)
     Serial.print("Ammount of samples: ");
@@ -602,6 +621,13 @@ void print_hex(long int sample [])
 void print_dec(long int sample [])
 {
   int samples = (sizeof(sample)+1);
+
+  #if (!(_CLOCK_FREQUENCY_ == 1)) // if _CLOCK_FREQUENCY_ does NOT equal 1 (let'e not bother to divide by 1 as its a waste of time)
+    sample[0] = (sample[0] / _CLOCK_FREQUENCY_); // if sample[0] equals 65535, and _CLOCK_FREQUENCY_ equals 0.5, then sample[0] becomes 131070 (65535 / 0.5), or if _CLOCK_FREQUENCY_ equals 2, then sample[0] becomes 32767.5 (65535 / 2)
+    
+    if (samples > 1) // GearRatio() only requires 1 sample (HIGH), whereas Test() requires 2 samples (HIGH & LOW)
+      sample[1] = (sample[1] / _CLOCK_FREQUENCY_);
+  #endif 
   
   #if (_DEBUG_ == 1)
     Serial.print("Ammount of samples: ");
@@ -610,8 +636,8 @@ void print_dec(long int sample [])
     Serial.print(sample[0]);
     Serial.print(" sample2: ");
     Serial.print(sample[1]);
-    Serial.print(" sample3: ");
-    Serial.print(sample[3]);
+    //Serial.print(" sample3: "); // WOTID doesn't ask for more than 2 decimal values seperated by a carriage return, so this is redundant and useless, thus commented out
+    //Serial.print(sample[3]);
     Serial.println("");
   #endif
 
