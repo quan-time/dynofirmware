@@ -214,10 +214,8 @@ void About() //  Fairly self explaitory.  It will dump this info
 
   Serial.print("Optical In: Pin ");
   Serial.print(_PIN_);
-  Serial.print(" (timeout: ");
   
-  Serial.print( (_OPTICAL_TIMEOUT_ / 1000) );
-  Serial.print("ms) ");
+  optical_timeout();
   
   #if (_DEBUG_ == 1)
     Serial.print("Debug ON, ");
@@ -234,6 +232,14 @@ void About() //  Fairly self explaitory.  It will dump this info
   #if (_IGNORE_STARTVALUE_ == 1)
     Serial.print("Ignore Start Value ON, ");
   #endif
+  
+  #if (_FILTER_SLOW_SAMPLES_ == 1)
+    Serial.print("Filter Slow Samples ON, ");
+  #endif
+  
+  Serial.print("Clock Frequency ");
+  Serial.print(_CLOCK_FREQUENCY_);
+  Serial.print("MHz, ");
     
   #if (_LOGGING_ == 1)
     Serial.print("Logging ON (");
@@ -728,6 +734,33 @@ void freemem_output()
   {
     Serial.print(freememory); // no decimal places
     Serial.print("b(s)");
+  }
+  
+  return;
+}
+
+void optical_timeout()
+{
+  float optical_timeout;
+  
+  Serial.print(" (timeout: ");
+  
+  if (_OPTICAL_TIMEOUT_ >= 1000000)
+  {
+    optical_timeout = (_OPTICAL_TIMEOUT_ / 1000 / 1000);
+    Serial.print( optical_timeout );
+    Serial.print("s) ");
+  }
+  else if (_OPTICAL_TIMEOUT_ >= 1000)
+  {
+    optical_timeout = (_OPTICAL_TIMEOUT_ / 1000);
+    Serial.print( optical_timeout );
+    Serial.print("ms) ");
+  }
+  else
+  {
+    Serial.print( _OPTICAL_TIMEOUT_ );
+    Serial.print("μs) ");
   }
   
   return;
