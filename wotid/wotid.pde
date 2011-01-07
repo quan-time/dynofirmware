@@ -78,6 +78,20 @@
   
 */
 #define _RPM_HILO_ 0
+/* End */
+
+/* Teensy CPU Speed Control: http://www.pjrc.com/teensy/prescaler.html */
+#define CPU_PRESCALE(n) (CLKPR = 0x80, CLKPR = (n))
+#define CPU_16MHz       0x00
+#define CPU_8MHz        0x01
+#define CPU_4MHz        0x02
+#define CPU_2MHz        0x03
+#define CPU_1MHz        0x04
+#define CPU_500kHz      0x05
+#define CPU_250kHz      0x06
+#define CPU_125kHz      0x07
+#define CPU_62kHz       0x08
+/* End Teensy CPU Frequency Overrride */
 
 /* Global Variables */
 int bytesreceived = 0; // Count how many bytes the WOTID frontend has sent the firmware, only counts the important data, ignores B12345 in AB12345 for example (WOTID about string)
@@ -94,6 +108,8 @@ int current_line = 0; // Keep track of how many lines have been saved in memory 
  // When Teensy is started or rebooted, this is the first function that is ran.
 void setup()
 {
+  //CPU_PRESCALE(CPU_16MHz); // Can be used to change the clock speed of the CPU, in this instance would set the speed during the device's startup.
+
   Serial.begin(_COM_BAUD_);  // setup connection, teensy++ is pure USB anyway, so this isnt hugely important to specify speed       
   pinMode(_PIN_, INPUT); // Pin 0 should be connected to the optical sensor
   
@@ -114,7 +130,7 @@ void loop() {
   //'Where SSSSS is for 0 to 65535 for start figures
   //'S1,23400<cr> = Start,Spark every rev,23400 start count.
   int startcount_input[_STARTCOUNT_BUFFER_] = { 0, 0, 0, 0, 0 }; // maybe default to 65535
-  long int startcount = 0; // hold "StartValue"
+  unsigned long startcount = 0; // hold "StartValue"
   int startcount_i = 0;
   
   #if (_LOGGING_ == 1)
@@ -130,7 +146,12 @@ void loop() {
   // read the incoming byte string, one byte at a time, and assign each readbyte[0] - readbyte[1] respectively.
   // If there are no bytes available, skip this code block
   if (available_bytes > 0) 
-  { 
+  {
+    // following 3 lines would bring the CPU out of sleep/idle and back to 16MHz
+    //cli();
+    //CPU_PRESCALE(CPU_16MHz);
+    //sei(); 
+    
     bytesreceived = (bytesreceived + available_bytes); // lets collect how many bytes in total the front end has sent
     
     while (i < available_bytes) // for every byte available, readbyte[0] holds the first byte, readbyte[1] holds the second byte etc
@@ -188,12 +209,18 @@ void loop() {
       return; // not a valid option
     }
   }
+  //else
+  //{
+      //cli();
+      //CPU_PRESCALE(CPU_125kHz); // Available bytes is 0 so we could effectively put the unit to sleep
+      //sei();
+  //}
   return;  
 }
 
 void About() //  Fairly self explaitory.  It will dump this info  
 {                                 
-  Serial.println("Quan-Time WOTID firmware. Version 0.1"); 
+  Serial.println("Quan-Time WOTID firmware. Version 0.2 - 7th Jan 2011"); 
   Serial.print("Compiled on ");
   Serial.print(__DATE__);
   Serial.print(" @ ");
@@ -255,7 +282,7 @@ void About() //  Fairly self explaitory.  It will dump this info
 
 //  The 2nd byte of the string is read to determine if we are going to calculate
 //  DRUM only, or Drum and simulated engine RPM.
-void Calc_Start(int readbyte [], long int startcount) 
+void Calc_Start(int readbyte [], unsigned long startcount) 
 {                               
   if ((readbyte[1] == '0') && (startcount == 0)) // readbyte[1] is the 2nd byte: 0 for no spark pulses, 1 for spark every revolution, 2 for every 2nd revolution
   {
@@ -305,7 +332,7 @@ void Gear_Ratio() {
   mechanism.  That way you can VERY accurately measure engine RPM regardless
   of drum speed.
 */
-  long int sample[2]; // initiate an array with 2 element: sample[0] and sample[1]
+  unsigned long sample[2]; // initiate an array with 2 element: sample[0] and sample[1]
 
   for(int x = 0; x < 10; x++) // loop this function set 10x, thats what the frontend wants
   {
@@ -320,7 +347,7 @@ void Gear_Ratio() {
 }
 
 void Test() {                           //  This just makes sure its spitting out data correctly
-  long int sample[1];                        // for the front end to see / calculate.
+  unsigned long sample[1];                        // for the front end to see / calculate.
   
   for(int x = 0; x < 15; x++) // loop this function set 15x, thats what the frontend wants
   {
@@ -333,8 +360,8 @@ void Test() {                           //  This just makes sure its spitting ou
   return;
 }
 
-void Auto_Start(int readbyte [], long int startcount){
-  long int sample[1];
+void Auto_Start(int readbyte [], unsigned long startcount){
+  unsigned long sample[1];
   
   sample[0] = pulseIn(_DRUM_HILO_, HIGH, _OPTICAL_TIMEOUT_); // measure how long the tooth is on for, store it in "sample1"
   
@@ -362,7 +389,7 @@ void Auto_Start(int readbyte [], long int startcount){
 }
 
 void Run_Down() {
-  long int sample[3];
+  unsigned long sample[3];
   
   // We need to detect that the drum is slowing down, so I don't think _OPTICAL_TIMEOUT_ applies here, it will default to 1 second anyway (set by Arduino).. perhaps we should even allow up to 10 second timeouts
   sample[0] = pulseIn(_DRUM_HILO_, HIGH); // measure how long the tooth is on for, store it in "sample1"
@@ -392,7 +419,7 @@ void Ending_Run() {
 
 // AS the name suggests, just the drum without RPM input
 void Drum_Only(){
-  long int sample[3];
+  unsigned long sample[3];
   
   sample[0] = pulseIn(_DRUM_HILO_, HIGH, _OPTICAL_TIMEOUT_); // measure how long the tooth is on for, store it in "sample1"
   sample[1] = pulseIn(_DRUM_HILO_, LOW, _OPTICAL_TIMEOUT_); // measure how long the tooth is off for
@@ -415,7 +442,7 @@ void Drum_Only(){
 
 // Drum + RPM input
 void Drum_RPM(){
-  long int sample[3];
+  unsigned long sample[3];
   
   sample[0] = pulseIn(_DRUM_HILO_, HIGH, _OPTICAL_TIMEOUT_);
   sample[1] = pulseIn(_DRUM_HILO_, LOW, _OPTICAL_TIMEOUT_);
@@ -478,7 +505,7 @@ void playback_rawdata()
 
 #if (_SIMULATE_DRUM_ == 1)
 #define _DELAY_TIMER_ 1 // specify delay in milliseconds to messages sent to the front end
-void simulate_dynorun(int readbyte[], long int startcount) // use startcount to not send data slower than WOTID asks
+void simulate_dynorun(int readbyte[], unsigned long startcount) // use startcount to not send data slower than WOTID asks
 {
   int highest1 = 20750; // 510E.. 510E,xxxx,x
   int highest2 = 20194; // 4EE2.. xxxx,4EE2,x
@@ -488,7 +515,7 @@ void simulate_dynorun(int readbyte[], long int startcount) // use startcount to 
   int highrpm = 9000;
   int samples = 30; // how many lines to send to the front end
   int i = 0;
-  long int sample[3];
+  unsigned long sample[3];
 
   int difference1 = ((highest1 - lowest1) / samples);
   int difference2 = ((highest2 - lowest2) / samples);
@@ -553,7 +580,7 @@ void simulate_dynorun(int readbyte[], long int startcount) // use startcount to 
 #endif
 
 // Common function used by all our code (even simulate_dynorun) that send Hexadecimal values over the serial link. The function that actually sends the HEX numbers to the frontend like: FFFF,FFFF,0 which in decimal means 65535,65535,0
-void print_hex(long int sample [])
+void print_hex(unsigned long sample [])
 {
   int samples = (sizeof(sample)+1); // WOTID always expects 3 hex values that are seperated by carriage returns so we could set this static to 3 isntead of determining how many array elements are in 'sample'
 
@@ -624,7 +651,7 @@ void print_hex(long int sample [])
 }
 
 // Usage see print_hex
-void print_dec(long int sample [])
+void print_dec(unsigned long sample [])
 {
   int samples = (sizeof(sample)+1);
 
@@ -682,8 +709,8 @@ void print_dec(long int sample [])
 
 void uptime()
 {
-  long int days, hours, mins;
-  long int currentuptime = ((millis() - startup) /1000);
+  long days, hours, mins;
+  long currentuptime = ((millis() - startup) /1000);
 
   days = currentuptime / 86400;
   hours = (currentuptime / 3600) - (days * 24);
@@ -765,3 +792,6 @@ void optical_timeout()
   
   return;
 }
+  
+  
+  
