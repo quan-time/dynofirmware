@@ -34,7 +34,7 @@
 #define _OPTICAL_TIMEOUT_ 1000000
 #define _SERIAL_BUFFER_ 8
 #define _FILTER_SLOW_SAMPLES_ 1
-#define _END_RUN_ 1s
+#define _END_RUN_ 1
 #define _CLOCK_FREQUENCY_ 1
 #define _MAXIMUM_MICROSECOND_ 65535
 //#define _MAXIMUM_MICROSECOND_ (int)(65535 / _CLOCK_FREQUENCY_) // not used
