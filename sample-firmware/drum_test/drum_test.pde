@@ -10,6 +10,7 @@ int pin = 0;
 int human_readable = 1;
 int count_deceleration = 0; // we increment this number each time we detect the drum is slowing down
 unsigned long timeout = 10000000; // default is 1 second, this value is microseconds, i've set this for 10 seconds
+int ledState = LOW;
 
 // How many deceleration samples in a row are required to effectively "End the run"
 #define _END_RUN_ 5
@@ -17,11 +18,15 @@ unsigned long timeout = 10000000; // default is 1 second, this value is microsec
 #define _PULSES_PER_REV_ 4
 // Circumfereance in mm
 #define _CIRCUMFERENCE_ 1426.283
+// Pin for LED
+#define _LED_PIN_ 6
+
 
 void setup() // main function set
 {
   Serial.begin(19200);  // setup connection, teensy++ is pure USB anyway, so this isnt hugely important to specify speed       
   pinMode(pin, INPUT); // Pin 0 should be connected to the optical sensor
+  pinMode(_LED_PIN_, OUTPUT); // initialize LED
 }
 
 void loop()
@@ -29,10 +34,18 @@ void loop()
   unsigned long sample[3];
   
   sample[0] = pulseIn(Drum_HiLo, HIGH, timeout); // 1st tooth
+
+  if (sample[0] > 0)
+    to_blink_or_not_to_blink(HIGH); // on
+
   sample[1] = pulseIn(Drum_HiLo, HIGH, timeout); // 2nd tooth
+
+  if (sample[1] > 0)
+    to_blink_or_not_to_blink(LOW); // off
+
   sample[2] = 0;
- 
-  if (count_deceleration >= _END_RUN_) // 5 deceleration samples in a row!
+
+ if (count_deceleration >= _END_RUN_) // 5 deceleration samples in a row!
   {
     if (human_readable == 1)
       Serial.println("CONFIRMED: Drum slowing down, would end the run now with 'T'");
@@ -45,16 +58,18 @@ void loop()
   }    
   if (sample[0] == 0)
   {
-    Serial.print("Received nothing (HIGH) from Drum, timed out (seconds): ");
+    Serial.print("Received nothing (Tooth #1) from Drum, timed out (seconds): ");
     Serial.println(timeout / 1000 / 1000);
-    delay(1000); // wait 1 seconds before we try again?
+    //delay(1000); // wait 1 seconds before we try again?
+    to_blink_or_not_to_blink(LOW);
     return;
   }
   else if (sample[1] == 0)
   {
-    Serial.println("Received nothing (LOW) from Drum, timed out (seconds): ");
+    Serial.print("Received nothing (Tooth #2) from Drum, timed out (seconds): ");
     Serial.println(timeout / 1000 / 1000);
-    delay(1000); // wait 1 seconds before we try again?
+    //delay(1000); // wait 1 seconds before we try again?
+    to_blink_or_not_to_blink(LOW);
     return;
   }
   else
@@ -70,6 +85,21 @@ void loop()
       print_wotid(3, sample);
     }
   }      
+}
+
+void to_blink_or_not_to_blink(int state)
+{
+  ledState = state;
+
+  // if the LED is off turn it on and vice-versa:
+  //if (ledState == LOW)
+    //ledState = HIGH;
+  //else
+    //ledState = LOW;
+  
+  // set the LED with the ledState of the variable:
+  digitalWrite(_LED_PIN_, ledState);
+  return;
 }
 
 void calculate_difference(unsigned long sample[])
