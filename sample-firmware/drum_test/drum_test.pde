@@ -13,6 +13,10 @@ unsigned long timeout = 10000000; // default is 1 second, this value is microsec
 
 // How many deceleration samples in a row are required to effectively "End the run"
 #define _END_RUN_ 5
+// How many pulses per revolution
+#define _PULSES_PER_REV_ 4
+// Circumfereance in mm
+#define _CIRCUMFERENCE_ 1426.283
 
 void setup() // main function set
 {
@@ -24,8 +28,8 @@ void loop()
 {
   unsigned long sample[3];
   
-  sample[0] = pulseIn(Drum_HiLo, HIGH, timeout); // measure how long the tooth is on for, store it in "sample1"
-  sample[1] = pulseIn(Drum_HiLo, LOW, timeout); // measure how long the tooth is off for
+  sample[0] = pulseIn(Drum_HiLo, HIGH, timeout); // 1st tooth
+  sample[1] = pulseIn(Drum_HiLo, HIGH, timeout); // 2nd tooth
   sample[2] = 0;
  
   if (count_deceleration >= _END_RUN_) // 5 deceleration samples in a row!
@@ -36,7 +40,7 @@ void loop()
       Serial.println("T");
     
     count_deceleration = 0; // let's reset back to 0 so we can do it all over again
-    delay(3000); // wait 1 seconds before we try again?
+    delay(100); // wait 1 seconds before we try again?
     return;
   }    
   if (sample[0] == 0)
@@ -57,15 +61,7 @@ void loop()
   {
     if (human_readable == 1)
     {
-      calculate_rpm(sample);
-      
-      Serial.print("   Tooth ON: ");     
-      Serial.print(sample[0]);
-      Serial.print("μs   Tooth OFF: ");
-      Serial.print(sample[1]);
-      Serial.print("μs   Difference: ");
-     
-      calculate_difference(sample);     
+      rotation_status(sample);    
       
       Serial.println("");
     }
@@ -78,32 +74,70 @@ void loop()
 
 void calculate_difference(unsigned long sample[])
 {
+  float difference;
+  
   if (sample[0] > sample[1])
   {
+    difference = (sample[0]-sample[1]);
+
     count_deceleration = 0; // reset back to 0
     Serial.print("+");
-    Serial.print( (sample[0]-sample[1]) );
-    Serial.print("μs (Drum Speeding UP)");
+    
+    if (difference >= 1000000)
+    {
+      Serial.print( (difference / 1000 / 1000) );
+      Serial.print("secs");
+    }
+    else if (difference >= 1000)
+    {
+      Serial.print( (difference / 1000) );
+      Serial.print("ms");
+    }
+    else
+    {
+      Serial.print(difference);  
+      Serial.print("us");
+    }     
+ 
+    Serial.print(" (Drum Speeding UP)");
   }
   else if (sample[0] < sample[1])
   {
+    difference = (sample[1]-sample[0]);
+    
     count_deceleration++; // increment by 1
     Serial.print("-");
-    Serial.print( (sample[1]-sample[0]) );
-    Serial.print("μs (Drum Slowing DOWN)");
+
+    if (difference >= 1000000)
+    {
+      Serial.print( (difference / 1000 / 1000) );
+      Serial.print("secs");
+    }
+    else if (difference >= 1000)
+    {
+      Serial.print( (difference / 1000) );
+      Serial.print("ms");
+    }
+    else
+    {
+      Serial.print(difference);  
+      Serial.print("us");
+    }      
+    
+    Serial.print(" (Drum Slowing DOWN)");
   }
   else
   {
     Serial.print( (sample[0]-sample[1]) );
-    Serial.print("μs (Drum Holding Constant Speed)");
+    Serial.print("us (Drum Holding Constant Speed)");
   }
 } 
 
 void calculate_rpm(unsigned long sample[])
 {
-  int rpm;
-  long revs_per_km = 1000000 / 1426.283; // 1million millimeters divided by drum circumferance, this formula is 701.2622720897616 rotations to go 1 kilometer
-  int kmh;  
+  float rpm;
+  float revs_per_km = 1000000 / _CIRCUMFERENCE_; // 1million millimeters divided by drum circumferance, this formula is 701.2622720897616 rotations to go 1 kilometer
+  float kmh;  
 
   if (sample[0] > sample[1])
   {
@@ -114,7 +148,7 @@ void calculate_rpm(unsigned long sample[])
   Then times the above result by 8 (since HIGH is just one tooth sample, and 8 teeth is a full revolution)..
   Finally we do 60000 (milliseconds) divided by the result above ((HIGH / 1000) * 8) which gives us rpm
 */
-    rpm = (60000 / ((sample[0] / 1000)  * 8));
+    rpm = (float)(60000. / ((sample[0] / 1000.) * _PULSES_PER_REV_));
 /*
   float kmh:
   
@@ -125,12 +159,12 @@ void calculate_rpm(unsigned long sample[])
   }
   else if (sample[0] < sample[1])
   {
-    rpm = (60000 / ((sample[1] / 1000) * 8));
+    rpm = (float)(60000. / ((sample[0] / 1000.) * _PULSES_PER_REV_));
     kmh = ((rpm * 60) / revs_per_km);
   }
   else
   {
-    rpm = (60000 / ((sample[0] / 1000) * 8));
+    rpm = (float)(60000. / ((sample[0] / 1000.) * _PULSES_PER_REV_));
     kmh = ((rpm * 60) / revs_per_km);
   }
 
@@ -139,6 +173,51 @@ void calculate_rpm(unsigned long sample[])
   Serial.print("   KM/H: ");
   Serial.print(kmh);
   return;
+}
+
+void rotation_status(unsigned long sample[])
+{
+  calculate_rpm(sample);
+
+  Serial.print("   Tooth 1: ");
+      
+  if (sample[0] >= 1000000)
+  {
+    Serial.print( (float)(sample[0] / 1000. / 1000.) );
+    Serial.print("secs");
+  }
+  else if (sample[0] >= 1000)
+  {
+    Serial.print( (float)(sample[0] / 1000.) );
+    Serial.print("ms");
+  }
+  else
+  {
+    Serial.print(sample[0]);  
+    Serial.print("us");
+  }
+  
+  Serial.print("   Tooth 2: ");
+      
+  if (sample[1] >= 1000000)
+  {
+    Serial.print( (float)(sample[1] / 1000. / 1000.) );
+    Serial.print("secs");
+  }
+  else if (sample[0] >= 1000)
+  {
+    Serial.print( (float)(sample[1] / 1000.) );
+    Serial.print("ms");
+  }
+  else
+  {
+    Serial.print(sample[1]);  
+    Serial.print("us");
+  }
+  
+  Serial.print("   Difference: ");
+     
+  calculate_difference(sample);
 }
 
 // Usage, if there are 2 samples, then you would do "print_hex(2,sample1, sample2, 0);" or if you had 3 samples then "print_hex(3,sample1, sample2, sample3);" or only 1 sample then "print_hex(1,sample1, 0, 0);"
