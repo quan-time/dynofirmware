@@ -6,6 +6,7 @@ int pin = 0;
   human_readable:
   0 = WOTID frontend (HEX) = 510E,4EEE,0
   1 = Human readable (DEC) = RPM: 110   KM/H: 9.4   Tooth ON: 20750ms   Tooth OFF: 20194ms   Difference: +556ms
+  2 = WOTID frontend (DEC) = 65535,65500,0
 */
 int human_readable = 1;
 int count_deceleration = 0; // we increment this number each time we detect the drum is slowing down
@@ -21,6 +22,9 @@ int ledState = LOW;
 // Pin for LED
 #define _LED_PIN_ 6
 
+#define _TOOTH_1_ HIGH
+#define _TOOTH_2_ HIGH
+
 
 void setup() // main function set
 {
@@ -33,12 +37,12 @@ void loop()
 {
   unsigned long sample[3];
   
-  sample[0] = pulseIn(Drum_HiLo, HIGH, timeout); // 1st tooth
+  sample[0] = pulseIn(Drum_HiLo, _TOOTH_1_, timeout); // 1st tooth
 
   if (sample[0] > 0)
     to_blink_or_not_to_blink(HIGH); // on
 
-  sample[1] = pulseIn(Drum_HiLo, HIGH, timeout); // 2nd tooth
+  sample[1] = pulseIn(Drum_HiLo, _TOOTH_2_, timeout); // 2nd tooth
 
   if (sample[1] > 0)
     to_blink_or_not_to_blink(LOW); // off
@@ -80,10 +84,10 @@ void loop()
       
       Serial.println("");
     }
-    else
-    {
+    else if (human_readable == 2)
+      print_wotid_dec(3, sample);
+    else if (human_readable == 0)
       print_wotid(3, sample);
-    }
   }      
 }
 
@@ -272,6 +276,35 @@ void print_wotid(int samples, unsigned long sample [])
     Serial.print(sample[1],HEX);
     Serial.print(",");
     Serial.print(sample[2],HEX); // Complete line
+  }
+    
+  Serial.println("");
+  
+  return;
+}
+
+// Usage, if there are 2 samples, then you would do "print_hex(2,sample1, sample2, 0);" or if you had 3 samples then "print_hex(3,sample1, sample2, sample3);" or only 1 sample then "print_hex(1,sample1, 0, 0);"
+void print_wotid_dec(int samples, unsigned long sample [])
+{   
+  if (samples == 1)
+  {
+    Serial.print(sample[0]);
+  }
+  else
+  {  
+    Serial.print(sample[0]);
+    Serial.print(",");
+  }
+
+  if (samples == 2)
+  {
+    Serial.print(sample[1]); // Complete line
+  }
+  else if (samples == 3)
+  {
+    Serial.print(sample[1]);
+    Serial.print(",");
+    Serial.print(sample[2]); // Complete line
   }
     
   Serial.println("");
