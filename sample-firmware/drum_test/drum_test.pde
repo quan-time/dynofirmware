@@ -25,6 +25,9 @@ int ledState = LOW;
 #define _TOOTH_1_ HIGH
 #define _TOOTH_2_ HIGH
 
+// Wait until there is a LOW state (gate is blocked/interrupted) before we get a reading from the HIGH state (gate open).. if we initiate a HIGH state with the sensor starting halfway through the open gate (HIGH), we might not get the data we actually want
+#define _WAIT_FOR_LOW_ 0
+
 
 void setup() // main function set
 {
@@ -37,12 +40,26 @@ void loop()
 {
   unsigned long sample[3];
   
-  sample[0] = pulseIn(Drum_HiLo, _TOOTH_1_, timeout); // 1st tooth
+  #if (_WAIT_FOR_LOW_ == 1)
+    while ( digitalRead(pin) != HIGH ) // loop until pin 0 reachs a LOW state
+    {
+    }
+    sample[0] = pulseIn(Drum_HiLo, _TOOTH_1_, timeout); // 1st tooth
+  #else
+    sample[0] = pulseIn(Drum_HiLo, _TOOTH_1_, timeout); // 1st tooth
+  #endif
 
   if (sample[0] > 0)
     to_blink_or_not_to_blink(HIGH); // on
 
-  sample[1] = pulseIn(Drum_HiLo, _TOOTH_2_, timeout); // 2nd tooth
+  #if (_WAIT_FOR_LOW_ == 1)
+    while ( digitalRead(pin) == HIGH ) // loop until pin 0 reachs a LOW state
+    {
+    }
+    sample[1] = pulseIn(Drum_HiLo, _TOOTH_2_, timeout); // 1st tooth
+  #else
+    sample[1] = pulseIn(Drum_HiLo, _TOOTH_2_, timeout); // 1st tooth
+  #endif
 
   if (sample[1] > 0)
     to_blink_or_not_to_blink(LOW); // off
@@ -288,23 +305,23 @@ void print_wotid_dec(int samples, unsigned long sample [])
 {   
   if (samples == 1)
   {
-    Serial.print(sample[0]);
+    Serial.print(sample[0],DEC);
   }
   else
   {  
-    Serial.print(sample[0]);
+    Serial.print(sample[0],DEC);
     Serial.print(",");
   }
 
   if (samples == 2)
   {
-    Serial.print(sample[1]); // Complete line
+    Serial.print(sample[1],DEC); // Complete line
   }
   else if (samples == 3)
   {
-    Serial.print(sample[1]);
+    Serial.print(sample[1],DEC);
     Serial.print(",");
-    Serial.print(sample[2]); // Complete line
+    Serial.print(sample[2],DEC); // Complete line
   }
     
   Serial.println("");
