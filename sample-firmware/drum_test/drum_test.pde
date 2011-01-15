@@ -41,7 +41,7 @@ void loop()
   unsigned long sample[3];
   
   #if (_WAIT_FOR_LOW_ == 1)
-    while ( digitalRead(pin) != HIGH ) // loop until pin 0 reachs a LOW state
+    while ( digitalRead(pin) == HIGH ) // loop until pin 0 reachs a LOW state
     {
     }
     sample[0] = pulseIn(Drum_HiLo, _TOOTH_1_, timeout); // 1st tooth
