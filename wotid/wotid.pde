@@ -83,7 +83,7 @@ void loop() {
       About();
       return;
     }
-    else if ( (readbyte[0] == 'S') && ( (readbyte[1] == '0') || (readbyte[1] == '1') || (readbyte[1] == '2') ) ) // if string is S0, S1 or S2
+    else if ( ((readbyte[0] == 'S') || (readbyte[0] == 's')) && ( (readbyte[1] == '0') || (readbyte[1] == '1') || (readbyte[1] == '2') ) ) // if string is S0, S1 or S2
     {
       while (startcount_i < 5) // lets not wait for the 6th byte "," or space whatever it is. This could crash/infinite loop if the WOTID frontend only sends 4 numbers (like 9999 for example) 
       {
@@ -211,7 +211,7 @@ void Calc_Start(int readbyte [], unsigned long startcount)
     #if (_SIMULATE_DRUM_ == 1)
       simulate_dynorun(readbyte, startcount);
     #else
-      Drum_Only(0,millis()); // we initialize Drum_Only with 0 because 0 indicates how many deceleration samples we have detected.
+      Drum_Only(0,millis(),0); // we initialize Drum_Only with 0 because 0 indicates how many deceleration samples we have detected.
     #endif
     return;
   }
@@ -305,7 +305,7 @@ void Auto_Start(int readbyte [], unsigned long startcount, unsigned long startru
   }
   else if ( (sample[0] < startcount) && (readbyte[1] == '0') ) // if drum input is less than startvalue AND readbyte DOES = 0 is in reference to S0 (0 for no spark pulses)
   {
-    Drum_Only(0,millis());
+    Drum_Only(0,millis(),0);
     return;
   }
   else if ( (sample[0] < startcount) && !(readbyte[1] == '0') ) // if drum input is less than startvalue AND readbyte DOES NOT = 0, Sx is either S1 or S2 (1 for spark every revolution, 2 for every 2nd revolution)
@@ -362,7 +362,7 @@ void Ending_Run() {
 }
 
 // AS the name suggests, just the drum without RPM input
-void Drum_Only(int end_run_counter, unsigned long startrun){
+void Drum_Only(int end_run_counter, unsigned long startrun, int samplecount){
   unsigned long sample[3];
   unsigned long elasped_time = (millis() - startrun);
   
@@ -372,7 +372,7 @@ void Drum_Only(int end_run_counter, unsigned long startrun){
     Ending_Run();
     return;  
   }
-  if (end_run_counter >= _END_RUN_) // confirmed, so and so ammount of samples in a row are indicating decelleration of the drum, so lets end the run
+  if ( (end_run_counter >= _END_RUN_) && (samplecount >= _MINIMUM_SAMPLES_) ) /// confirmed, so and so ammount of samples in a row are indicating decelleration of the drum, so lets end the run
   {
     Ending_Run();
     return;
@@ -390,14 +390,14 @@ void Drum_Only(int end_run_counter, unsigned long startrun){
   if ( (sample[0] < sample[1]) || ((sample[0] == 0) && (sample[1] == 0)) ) // if tooth 1 is less than tooth 2
   {
     end_run_counter++; // let's increment our counter by 1
-    Drum_Only(end_run_counter,startrun);
+    Drum_Only(end_run_counter,startrun,samplecount++);
     return;
   }
   else
   {
     end_run_counter = 0; // not slowing down, so lets reset back to 0
     print_hex(3,sample);
-    Drum_Only(end_run_counter,millis());
+    Drum_Only(end_run_counter,millis(),samplecount++);
     return;
   }
   return;

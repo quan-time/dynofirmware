@@ -19,6 +19,7 @@
   _SERIAL_BUFFER_         8                          (Ammount of bytes that should be pre-allocated to read the serial connection's buffer with, I've determined 8 is plenty "S065535," is the longest string I've seen the frontend generate)
   _FILTER_SLOW_SAMPLES_   0       [0 = OFF, 1 = ON]  (How we handle optical sensor values that are greater than _MAXIMUM_MICROSECOND_, 1 turns this on by filtering them so they don't appear in WOTID, 0 turns this off and just sends the value as 65535 instead)
   _END_RUN_               1                          (How many deceleration samples in a row are required to call it a day and issue the end of the run with "T")
+  _MINIMUM_SAMPLES_       20      [0 = OFF]          (WOTID requires 20 sets of samples minimum to be able to make a graph, we ignore _END_RUN_ until we have reached our minimum then the run can be ended)
   _CLOCK_FREQUENCY_       1                          (Has a huge affect on minimum starting speed. Measured in MHz, WOTID uses this value to divide every optical sensor value by, by setting a value that isn't 1 we override this behaviour and let the firmware do the math instead. 2 = 0.5, 1 = 1, 0.5 = 2, 0.225 = 4 etc.)
   _MAXIMUM_MICROSECOND_   65535   [65.535ms]         (WOTID only accepts hexadecimal values up to FFFF, which is 65535, related to minimum starting value, if _CLOCK_FREQUENCY_ changes from 1, we might need to automatically adjust our max to suit)
   _MAKERUN_TIMEOUT_       10000   [10 seconds]       (How long in milliseconds till the backend will timeout waiting for a valid sample from the optical sample when "Start Now" is hit in the Make Run menu)
@@ -42,6 +43,7 @@
 #define _SERIAL_BUFFER_ 8
 #define _FILTER_SLOW_SAMPLES_ 1
 #define _END_RUN_ 4
+#define _MINIMUM_SAMPLES_ 20
 #define _CLOCK_FREQUENCY_ 1
 #define _MAXIMUM_MICROSECOND_ 65535
 #define _MAKERUN_TIMEOUT_ 10000
@@ -94,7 +96,7 @@ int current_line = 0; // Keep track of how many lines have been saved in memory 
 int ledState = 0;
 /* Logging Global Variables */
 #if (_LOGGING_ == 1)
-  char playback_string[_MAX_LINES_][_LINE_LENGTH_]; // _MAX_LINES_ * _LINE_LENGTH = the ammount of bytes this will allocate (200 * 15 = 3000bytes for example, Teensy++ 2.0 has 8192 bytes total), this really should be made a local variable somehow, it's an evil global variable
+  int playback_string[_MAX_LINES_][_LINE_LENGTH_]; // _MAX_LINES_ * _LINE_LENGTH = the ammount of bytes this will allocate (200 * 15 = 3000bytes for example, Teensy++ 2.0 has 8192 bytes total), this really should be made a local variable somehow, it's an evil global variable
   int playback_buttonState = 0; // Status of button, whether it's been pressed or notr
 #endif
 /* End Logging Globals */
