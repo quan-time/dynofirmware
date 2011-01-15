@@ -18,8 +18,7 @@
 //  some code help as im a lazy sod and he offered :)
 //------------------------------------------------------------------------------
 
-#include "config.h"
-int ledState = LOW; 
+#include "config.h" 
 
 // When Teensy is started or rebooted, this is the first function that is ran.
 void setup()
@@ -29,6 +28,8 @@ void setup()
   Serial.begin(_COM_BAUD_);  // setup connection, teensy++ is pure USB anyway, so this isnt hugely important to specify speed       
   pinMode(_PIN_, INPUT); // Pin 0 should be connected to the optical sensor
   pinMode(_LED_PIN_, OUTPUT); // initialize LED
+  
+  ledState = LOW; // LED is default off
   
   #if (_LOGGING_ == 1)
     pinMode(_PLAYBACK_PIN_, INPUT); // Pin 5 to playback current data
@@ -84,7 +85,6 @@ void loop() {
     }
     else if ( (readbyte[0] == 'S') && ( (readbyte[1] == '0') || (readbyte[1] == '1') || (readbyte[1] == '2') ) ) // if string is S0, S1 or S2
     {
-      #if (_IGNORE_STARTVALUE_ == 0)
       while (startcount_i < 5) // lets not wait for the 6th byte "," or space whatever it is. This could crash/infinite loop if the WOTID frontend only sends 4 numbers (like 9999 for example) 
       {
         available_bytes = Serial.available();
@@ -98,7 +98,6 @@ void loop() {
           startcount_i++;
         }
       }
-      #endif
       #if (_IGNORE_STARTVALUE_ == 1)
         startcount = 0;
       #endif
@@ -154,12 +153,16 @@ void About() //  Fairly self explaitory.  It will dump this info
   freemem_output();
   Serial.print(", Bytes received: ");
   Serial.println(bytesreceived);
-  Serial.print("Config options: ");
+  Serial.print("Config options = ");
 
-  Serial.print("Optical In: Pin ");
+  Serial.print("Optical: Pin ");
   Serial.print(_PIN_);
   
   optical_timeout();
+  
+  Serial.print("End Run: ");
+  Serial.print(_END_RUN_);
+  Serial.print("x, ");
   
   #if (_DEBUG_ == 1)
     Serial.print("Debug ON, ");
@@ -181,9 +184,11 @@ void About() //  Fairly self explaitory.  It will dump this info
     Serial.print("Filter Slow Samples ON, ");
   #endif
   
-  Serial.print("Clock Frequency ");
-  Serial.print(_CLOCK_FREQUENCY_);
-  Serial.print("MHz, ");
+  #if (_CLOCK_FREQUENCY_ != 1)
+    Serial.print("Clock Frequency ");
+    Serial.print(_CLOCK_FREQUENCY_);
+    Serial.print("MHz, ");
+  #endif
     
   #if (_LOGGING_ == 1)
     Serial.print("Logging ON (");
@@ -206,7 +211,7 @@ void Calc_Start(int readbyte [], unsigned long startcount)
     #if (_SIMULATE_DRUM_ == 1)
       simulate_dynorun(readbyte, startcount);
     #else
-      Drum_Only(0); // we initialize Drum_Only with 0 because 0 indicates how many deceleration samples we have detected.
+      Drum_Only(0,millis()); // we initialize Drum_Only with 0 because 0 indicates how many deceleration samples we have detected.
     #endif
     return;
   }
@@ -224,7 +229,7 @@ void Calc_Start(int readbyte [], unsigned long startcount)
     #if (_SIMULATE_DRUM_ == 1)
       simulate_dynorun(readbyte, startcount);
     #else
-      Auto_Start(readbyte, startcount);
+      Auto_Start(readbyte, startcount, millis());
     #endif
     return;
   }
@@ -253,8 +258,8 @@ void Gear_Ratio() {
 
   for(int x = 0; x < 10; x++) // loop this function set 10x, thats what the frontend wants
   {
-    sample[0] = pulseIn(_DRUM_HILO_, HIGH, _OPTICAL_TIMEOUT_); // Time it takes for this tooth
-    sample[1] = pulseIn(_DRUM_HILO_, HIGH, _OPTICAL_TIMEOUT_); // to arrive to this tooth
+    sample[0] = pulseIn(_DRUM_HILO_, _TOOTH_1_, _OPTICAL_TIMEOUT_); // Time it takes for this tooth
+    sample[1] = pulseIn(_DRUM_HILO_, _TOOTH_2_, _OPTICAL_TIMEOUT_); // to arrive to this tooth
 
     // Should we check if these samples are greater than _MAXIMUM_MICROSECOND_ (65535) first? no because the frontend accepts a decimal value
     print_dec(2,sample);
@@ -269,7 +274,7 @@ void Test() {                           //  This just makes sure its spitting ou
   
   for(int x = 0; x < 15; x++) // loop this function set 15x, thats what the frontend wants
   {
-    sample[0] = pulseIn(_DRUM_HILO_, HIGH);
+    sample[0] = pulseIn(_DRUM_HILO_, _TOOTH_1_);
     
     // Should we check if these samples are greater than _MAXIMUM_MICROSECOND_ (65535) first? no because the frontend accepts a decimal value
     print_dec(1,sample);
@@ -278,20 +283,29 @@ void Test() {                           //  This just makes sure its spitting ou
   return;
 }
 
-void Auto_Start(int readbyte [], unsigned long startcount){
+void Auto_Start(int readbyte [], unsigned long startcount, unsigned long startrun){
   unsigned long sample[1];
+  unsigned long elasped_time = (millis() - startrun);
   
-  sample[0] = pulseIn(_DRUM_HILO_, HIGH, _OPTICAL_TIMEOUT_); // measure how long the tooth is on for, store it in "sample1"
+  sample[0] = pulseIn(_DRUM_HILO_, _TOOTH_1_, _OPTICAL_TIMEOUT_); // measure how long the tooth is on for, store it in "sample1"
   
   if ( (sample[0] == 0) || (sample[0] > _MAXIMUM_MICROSECOND_) )// drum input timed out after 1 second of no input, try again immediately, or samples was too slow (_MAXIMUM_MICROSECOND_)
   {
     LED_blink(); // This will blink with _OPTICAL_TIMEOUT_, every 1 second, to indicate we are waiting for data
-    Auto_Start(readbyte, startcount);
+
+    if (elasped_time >= _MAKERUN_TIMEOUT_) // lets give it this many counts before we exit back to the loop
+    {
+      Serial.println("0,0,0"); // we send this so the frontend will auto-end
+      Ending_Run();
+      return;
+    }
+
+    Auto_Start(readbyte, startcount, startrun);
     return;
   }
   else if ( (sample[0] < startcount) && (readbyte[1] == '0') ) // if drum input is less than startvalue AND readbyte DOES = 0 is in reference to S0 (0 for no spark pulses)
   {
-    Drum_Only(0);
+    Drum_Only(0,millis());
     return;
   }
   else if ( (sample[0] < startcount) && !(readbyte[1] == '0') ) // if drum input is less than startvalue AND readbyte DOES NOT = 0, Sx is either S1 or S2 (1 for spark every revolution, 2 for every 2nd revolution)
@@ -303,7 +317,15 @@ void Auto_Start(int readbyte [], unsigned long startcount){
   {
     // insert code here if neither of the above are true
     LED_blink(); // This will blink with _OPTICAL_TIMEOUT_, every 1 second, to indicate we are waiting for data
-    Auto_Start(readbyte, startcount);
+
+    if (elasped_time >= _MAKERUN_TIMEOUT_) // lets give it this many counts before we exit back to the loop
+    {
+      Serial.println("0,0,0"); // we send this so the frontend will auto-end
+      Ending_Run();
+      return;
+    }
+    
+    Auto_Start(readbyte, startcount, startrun);
     return;
   }
   return;
@@ -313,8 +335,8 @@ void Run_Down() {
   unsigned long sample[3];
   
   // We need to detect that the drum is slowing down, so I don't think _OPTICAL_TIMEOUT_ applies here, it will default to 1 second anyway (set by Arduino).. perhaps we should even allow up to 10 second timeouts
-  sample[0] = pulseIn(_DRUM_HILO_, HIGH);
-  sample[1] = pulseIn(_DRUM_HILO_, HIGH);
+  sample[0] = pulseIn(_DRUM_HILO_, _TOOTH_1_);
+  sample[1] = pulseIn(_DRUM_HILO_, _TOOTH_2_);
   sample[2] = 0;
 
   print_hex(3,sample);
@@ -335,36 +357,47 @@ void Run_Down() {
 // Perhaps we could use this function later to free memory we've used so far
 void Ending_Run() {
   Serial.println("T");
+  LED_switch(LOW); // switch LED off if it is on
   return;
 }
 
 // AS the name suggests, just the drum without RPM input
-void Drum_Only(int end_run_counter){
+void Drum_Only(int end_run_counter, unsigned long startrun){
   unsigned long sample[3];
+  unsigned long elasped_time = (millis() - startrun);
   
-  if (ledState == HIGH) // turn off LED before 1st tooth sample
-    LED_switch(LOW);
-  
-  sample[0] = pulseIn(_DRUM_HILO_, HIGH, _OPTICAL_TIMEOUT_);
-  LED_switch(HIGH); // turn LED on
-  sample[1] = pulseIn(_DRUM_HILO_, HIGH, _OPTICAL_TIMEOUT_);
-  LED_switch(LOW); // switch it off again
-  sample[2] = 0;
-  print_hex(3,sample);
-    
-  if (sample[0] < sample[1]) // if tooth 1 is less than tooth 2
-    end_run_counter++; // let's increment our counter by 1
-  else
-    end_run_counter = 0; // not slowing down, so lets reset back to 0
-    
+  if (elasped_time >= _MAKERUN_TIMEOUT_)
+  {
+    Serial.println("0,0,0"); // lets clear the frontend
+    Ending_Run();
+    return;  
+  }
   if (end_run_counter >= _END_RUN_) // confirmed, so and so ammount of samples in a row are indicating decelleration of the drum, so lets end the run
   {
     Ending_Run();
     return;
   }
+  
+  if (ledState == HIGH) // turn off LED before 1st tooth sample
+    LED_switch(LOW);
+  
+  sample[0] = pulseIn(_DRUM_HILO_, _TOOTH_1_, _OPTICAL_TIMEOUT_);
+  LED_switch(HIGH); // turn LED on
+  sample[1] = pulseIn(_DRUM_HILO_, _TOOTH_2_, _OPTICAL_TIMEOUT_);
+  LED_switch(LOW); // switch it off again
+  sample[2] = 0;
+    
+  if ( (sample[0] < sample[1]) || ((sample[0] == 0) && (sample[1] == 0)) ) // if tooth 1 is less than tooth 2
+  {
+    end_run_counter++; // let's increment our counter by 1
+    Drum_Only(end_run_counter,startrun);
+    return;
+  }
   else
   {
-    Drum_Only(end_run_counter);
+    end_run_counter = 0; // not slowing down, so lets reset back to 0
+    print_hex(3,sample);
+    Drum_Only(end_run_counter,millis());
     return;
   }
   return;
@@ -377,13 +410,13 @@ void Drum_RPM(int end_run_counter){
   if (ledState == HIGH) // turn off LED before 1st tooth sample
     LED_switch(LOW);  
 
-  sample[0] = pulseIn(_DRUM_HILO_, HIGH, _OPTICAL_TIMEOUT_);
+  sample[0] = pulseIn(_DRUM_HILO_, _TOOTH_1_, _OPTICAL_TIMEOUT_);
   LED_switch(HIGH); // turn LED on
-  sample[1] = pulseIn(_DRUM_HILO_, HIGH, _OPTICAL_TIMEOUT_);
+  sample[1] = pulseIn(_DRUM_HILO_, _TOOTH_2_, _OPTICAL_TIMEOUT_);
   LED_switch(LOW); // switch it off again
   
   #if (_EXTERNAL_RPM_SENSOR_ == 1)
-    sample[2] = pulseIn(_RPM_HILO_, HIGH); // timeout will default to 1second (Arduino)
+    sample[2] = pulseIn(_RPM_HILO_, _RPM_); // timeout will default to 1second (Arduino)
   #else
     sample[2] = 0;
   #endif
