@@ -85,32 +85,26 @@ void loop()
     while ( digitalRead(pin) == HIGH ) // loop until pin 0 reachs a LOW state
     {
     }
-    if (toothskip == 0)
-    {
       sample[0] = pulseIn(Drum_HiLo, _TOOTH_1_, timeout); // 1st tooth
-    }
   #else
-    if (toothskip == 0)
-    {
       sample[0] = pulseIn(Drum_HiLo, _TOOTH_1_, timeout); // 1st tooth (1/4 quarter turn)
+  #endif
 
-      if (_TOOTH_SKIP_ >= 1)
-      {
-        while (_TOOTH_SKIP_ > toothskip)
-        {
-          inbetween += pulseIn(Drum_HiLo, _TOOTH_1_, timeout); // 2nd tooth (1/4 turn)
-          toothskip++;
-          #if (_DEBUG_ == 1)
-            Serial.println("skipping");
-          #endif
-        }
-        toothskip = 0;
-      }
+  if (_TOOTH_SKIP_ >= 1)
+  {
+    while (_TOOTH_SKIP_ > toothskip)
+    {
+      inbetween += pulseIn(Drum_HiLo, _TOOTH_1_, timeout); // 2nd tooth (1/4 turn)
+      toothskip++;
       #if (_DEBUG_ == 1)
-      Serial.print("milliseconds between 2/4 and 3/4 turn ");
-      Serial.println(inbetween);
+        Serial.println("skipping");
       #endif
     }
+    toothskip = 0;
+  }
+  #if (_DEBUG_ == 1)
+    Serial.print("milliseconds between 2/4 and 3/4 turn ");
+    Serial.println(inbetween);
   #endif
 
   if (sample[0] > 0)
@@ -120,16 +114,28 @@ void loop()
     while ( digitalRead(pin) == HIGH ) // loop until pin 0 reachs a LOW state
     {
     }
-    if (toothskip == 0)
-    {
       sample[1] = pulseIn(Drum_HiLo, _TOOTH_2_, timeout); // 1st tooth
   #else
-    if (toothskip == 0)
-    {
       sample[1] = ( pulseIn(Drum_HiLo, _TOOTH_2_, timeout)); // (full turn)
-      sample[1] = ( sample[1] + (inbetween / toothskip) );
   #endif
-    }
+  
+  // calculate the difference between the teeth
+  sample[0] = ( sample[0] + (inbetween / _TOOTH_SKIP_) );
+  sample[1] = ( sample[1] + (inbetween / _TOOTH_SKIP_) );
+  
+  /*
+  // do I need code to subtract instead if the samples are slowing down?
+  if (sample[0] > sample[1])
+  {
+    sample[0] = ( sample[0] + (inbetween / _TOOTH_SKIP_) );
+    sample[1] = ( sample[1] + (inbetween / _TOOTH_SKIP_) );
+  }
+  else if (sample[0] < sample[1])
+  {
+    sample[0] = ( sample[0] - (inbetween / _TOOTH_SKIP_) );
+    sample[1] = ( sample[1] - (inbetween / _TOOTH_SKIP_) );
+  }
+  */ 
 
   if (sample[1] > 0)
     to_blink_or_not_to_blink(LOW); // off
