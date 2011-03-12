@@ -23,7 +23,8 @@
 // When Teensy is started or rebooted, this is the first function that is ran.
 void setup()
 {
-  //CPU_PRESCALE(CPU_16MHz); // Can be used to change the clock speed of the CPU, in this instance would set the speed during the device's startup.
+  //CPU_PRESCALE(CPU_500kHz); // Can be used to change the clock speed of the CPU, in this instance would set the speed during the device's startup.
+  //#define _CPU_OVERRIDE_ "0.5mHz" // just for our sake, if we're not overriding the cpu speed just comment this line out
 
   Serial.begin(_COM_BAUD_);  // setup connection, teensy++ is pure USB anyway, so this isnt hugely important to specify speed       
   pinMode(_PIN_, INPUT); // Pin 0 should be connected to the optical sensor
@@ -107,7 +108,12 @@ void loop() {
     }
     else if ( (readbyte[0] == 'G') || (readbyte[0] == 'g') )
     {
-      Gear_Ratio();
+      #if (_SIMULATE_GEAR_RATIO_ == 1)
+        simulate_autocalc();
+      #else
+        Gear_Ratio();
+      #endif 
+      
       return;
     }
     else if ( (readbyte[0] == 'T') || (readbyte[0] == 't') )
@@ -147,15 +153,25 @@ void About() //  Fairly self explaitory.  It will dump this info
   Serial.print(__GNUC_MINOR__);
   Serial.print(".");
   Serial.println(__GNUC_PATCHLEVEL__);
-  Serial.print("Uptime: ");
-  uptime();
-  Serial.print(", Free Memory: ");
-  freemem_output();
-  Serial.print(", Bytes received: ");
-  Serial.println(bytesreceived);
-  Serial.print("Config options = ");
 
-  Serial.print("Optical: Pin ");
+  #if (_SYSTEM_INFO_ == 1)
+
+  #ifdef _CPU_OVERRIDE_
+  Serial.print("CPU: ");
+  Serial.print(_CPU_OVERRIDE_);
+  Serial.print(",");
+  #endif
+
+  Serial.print(" Uptime: ");
+  uptime();
+  Serial.print(", Free Mem: ");
+  freemem_output();
+  //Serial.print(", Bytes received: ");
+  //Serial.println(bytesreceived);
+  #endif
+  Serial.print(" Config = ");
+
+  Serial.print("Optic: Pin ");
   Serial.print(_PIN_);
   
   optical_timeout();
@@ -164,16 +180,26 @@ void About() //  Fairly self explaitory.  It will dump this info
   Serial.print(_END_RUN_);
   Serial.print("x, ");
   
+  #if (_TOOTH_SKIP_ >= 1)
+    Serial.print("Tooth Skip: ");
+    Serial.print(_TOOTH_SKIP_);
+    Serial.print(", ");
+  #endif
+  
   #if (_DEBUG_ == 1)
     Serial.print("Debug ON, ");
   #endif
   
   #if (_SIMULATE_DRUM_ == 1)
-    Serial.print("Simulate Drum ON, ");
+    Serial.print("Sim Drum ON, ");
   #endif
+  
+  #if (_SIMULATE_GEAR_RATIO_ == 1)
+    Serial.print("Sim Gear Ratio ON, ");
+  #endif  
     
   #if (_EXTERNAL_RPM_SENSOR_ == 1)
-    Serial.print("External RPM Sensor ON, ");
+    Serial.print("Ex RPM Sensor ON, ");
   #endif
   
   #if (_IGNORE_STARTVALUE_ == 1)
@@ -185,13 +211,19 @@ void About() //  Fairly self explaitory.  It will dump this info
   #endif
   
   #if (_CLOCK_FREQUENCY_ != 1)
-    Serial.print("Clock Frequency ");
+    Serial.print("Clock Freq ");
     Serial.print(_CLOCK_FREQUENCY_);
     Serial.print("MHz, ");
   #endif
+  
+  Serial.print("Min Samples: ");
+  Serial.print(_MINIMUM_SAMPLES_);
+  
+  Serial.print(", Makerun Timeout (s): ");
+  Serial.print((_MAKERUN_TIMEOUT_ / 1000));
     
   #if (_LOGGING_ == 1)
-    Serial.print("Logging ON (");
+    Serial.print(", Logging ON (");
     Serial.print(current_line);
     Serial.print(" out of ");
     Serial.print(_MAX_LINES_);
@@ -255,6 +287,8 @@ void Gear_Ratio() {
   of drum speed.
 */
   unsigned long sample[2]; // initiate an array with 2 element: sample[0] and sample[1]
+
+  delay(_WOTID_FRONTEND_DELAY_); // the frontend has a wierd delay so we wait 3 seconds before we send data
 
   for(int x = 0; x < 10; x++) // loop this function set 10x, thats what the frontend wants
   {
@@ -474,17 +508,39 @@ void playback_rawdata()
 }
 #endif
 
+void simulate_autocalc()
+{
+  unsigned long sample[2];
+  sample[0] = 18000; // my zzr250 at approx 38km/h in 4th gear at 4000rpm
+  sample[1] = 18000;
+  int i = 0;
+  
+  delay(_WOTID_FRONTEND_DELAY_);
+  
+  while (i != 10)
+  {
+    LED_blink();
+    print_dec(2, sample);
+    delay(1);
+    i++;
+  }
+  
+  Serial.println("T");
+  
+  return;
+}
+
 #if (_SIMULATE_DRUM_ == 1)
 #define _DELAY_TIMER_ 1 // specify delay in milliseconds to messages sent to the front end
 void simulate_dynorun(int readbyte[], unsigned long startcount) // use startcount to not send data slower than WOTID asks
 {
-  int highest1 = 20750; // 510E.. 510E,xxxx,x
-  int highest2 = 20194; // 4EE2.. xxxx,4EE2,x
-  int lowest1 = 5197; // 144D.. 144D,xxxx,x
-  int lowest2 = 5206; // 1456.. xxxx,1456,x
-  int lowrpm = 1000;
-  int highrpm = 9000;
-  int samples = 30; // how many lines to send to the front end
+  unsigned int highest1 = 50000; // 510E.. 510E,xxxx,x
+  unsigned int highest2 = 49000; // 4EE2.. xxxx,4EE2,x
+  unsigned int lowest1 = 4000; // 144D.. 144D,xxxx,x
+  unsigned int lowest2 = 400; // 1456.. xxxx,1456,x
+  unsigned int lowrpm = 1000;
+  unsigned int highrpm = 9000;
+  int samples = 80; // how many lines to send to the front end
   int i = 0;
   unsigned long sample[3];
 
@@ -492,7 +548,7 @@ void simulate_dynorun(int readbyte[], unsigned long startcount) // use startcoun
   int difference2 = ((highest2 - lowest2) / samples);
   int difference3 = ((lowrpm + highrpm) / samples);
 
-  delay(3000); // lets give the frontend time to set itself up, 3 secs
+  delay(_WOTID_FRONTEND_DELAY_); // lets give the frontend time to set itself up, 3 secs
   
   if (readbyte[1] == '0') // no spark pulse
   {
@@ -511,6 +567,7 @@ void simulate_dynorun(int readbyte[], unsigned long startcount) // use startcoun
         #else
           print_hex(3,sample);
         #endif
+        LED_blink();
 
         delay(_DELAY_TIMER_);
 	i++;
@@ -537,6 +594,7 @@ void simulate_dynorun(int readbyte[], unsigned long startcount) // use startcoun
         #else
           print_hex(3,sample);
         #endif
+        LED_blink();
 
         delay(_DELAY_TIMER_);
 	i++;
@@ -588,35 +646,35 @@ void print_hex(int samples, unsigned long sample [])
     Serial.println("");
   #endif
   
-  if (samples == 1)
-  {
-    Serial.print(sample[0],HEX);
-  }
-  else
-  {
-    Serial.print(sample[0],HEX);
-    Serial.print(",");
-  }
-
-  if (samples == 2)
-  {
-    Serial.print(sample[1],HEX); // Complete line
-  }
-  else if (samples == 3)
-  {
-    Serial.print(sample[1],HEX);
-    Serial.print(",");
-    Serial.print(sample[2],HEX); // Complete line
-  }
-
-  Serial.println("");
-
-  #if (_LOGGING_ == 1)
+ #if (_LOGGING_ == 1)
     current_line++;
     playback_string[current_line][0] = sample[0];
     playback_string[current_line][1] = sample[1];
     playback_string[current_line][2] = sample[2];
   #endif
+  
+  if (samples == 1)
+  {
+    Serial.print(sample[0],HEX);
+    return;
+  }
+
+  if (samples == 2)
+  {
+    Serial.print(sample[0],HEX);
+    Serial.print(",");
+    Serial.println(sample[1],HEX); // Complete line
+    return;
+  }
+  else if (samples == 3)
+  {
+    Serial.print(sample[0],HEX);
+    Serial.print(",");
+    Serial.print(sample[1],HEX);
+    Serial.print(",");
+    Serial.println(sample[2],HEX); // Complete line
+    return;
+  }
 
   return;
 }
@@ -642,36 +700,26 @@ void print_dec(int samples, unsigned long sample [])
     //Serial.print(sample[3]);
     Serial.println("");
   #endif
-
-  if (samples == 1)
-  {
-    Serial.print(sample[0],DEC);
-  }
-  else
-  {
-    Serial.print(sample[0],DEC);
-    Serial.print(",");
-  }
-
-  if (samples == 2)
-  {
-    Serial.print(sample[1],DEC); // Complete line
-  }
-  else if (samples == 3)
-  {
-    Serial.print(sample[1],DEC);
-    Serial.print(",");
-    Serial.print(sample[2],DEC); // Complete line
-  }
-
-  Serial.println("");
-
+  
   #if (_LOGGING_ == 1)
     current_line++;
     playback_string[current_line][0] = sample[0];
     playback_string[current_line][1] = sample[1];
-    playback_string[current_line][2] = sample[2];
   #endif
+
+  if (samples == 1)
+  {
+    Serial.println(sample[0],DEC);
+    return;
+  }
+
+  if (samples == 2)
+  {
+    Serial.print(sample[0],DEC);
+    Serial.print(",");
+    Serial.println(sample[1],DEC); // Complete line
+    return;
+  }
 
   return;
 }

@@ -5,6 +5,7 @@
 
   _LOGGING_               0       [0 = OFF, 1 = ON]  (Logging eats up the unit's memory)
   _SIMULATE_DRUM_         0       [0 = OFF, 1 = ON]  (Simulate Dynorun when "Make Run" is started in WOTID, turning this off uses the real Drum)
+  _SIMULATE_GEAR_RATIO_   0       [0 = OFF, 1 = ON]  (Simulate Gear Ratio when "AutoCalc" is started in WOTID, turning this off uses the real Drum)
   _COM_BAUD_              19200                      (Serial connection baud rate)
   _DEBUG_                 0       [0 = OFF, 1 = ON]  (Debug information, useless to the WOTID frontend, only useful with a terminal connected)
   _EXTERNAL_RPM_SENSOR_   0       [0 = OFF, 1 = ON]  (Whether or not there is an external RPM sensor, use _RPM_HILO_ below to specify the Pin it's connected to)
@@ -12,6 +13,7 @@
   _DRUM_HILO_             0                          (Which Pin the Drum sensor is connected to)
   _TOOTH_1_               HIGH    [LOW or HIGH]      (Tooth sample #1, which physical part of the wheel to get the sample from. LOW = photo beam interrupted, HIGH = gate clear)
   _TOOTH_2_               HIGH    [LOW or HIGH]      (Tooth sample #2, which physical part of the wheel to get the sample from. LOW = photo beam interrupted, HIGH = gate clear)
+  _TOOTH_SKIP_            0       [0]                (How many teeth to skip to reach the desired tooth, since our wheel has 4 teeth, we need to skip 2 teeth in between for the sample data to represent a full rotation, we use the data from the 2 skipped teeth to average out the target teeth)
   _RPM_                   HIGH    [LOW or HIGH]      (Which state to read external RPM samples from, HIGH or LOW)
   _IGNORE_STARTVALUE_     0       [0 = OFF, 1 = ON]  (Ignore the minimum start value (km/h) specified by WOTID, setting this to 1 will send all data to WOTID, even if it's below the start value)
   _STARTCOUNT_BUFFER_     5                          (Maximum ammount of bytes WOTID will send, when issuing "StartValue")
@@ -24,11 +26,14 @@
   _MAXIMUM_MICROSECOND_   65535   [65.535ms]         (WOTID only accepts hexadecimal values up to FFFF, which is 65535, related to minimum starting value, if _CLOCK_FREQUENCY_ changes from 1, we might need to automatically adjust our max to suit)
   _MAKERUN_TIMEOUT_       10000   [10 seconds]       (How long in milliseconds till the backend will timeout waiting for a valid sample from the optical sample when "Start Now" is hit in the Make Run menu)
   _VERSION_STRING_        "Blah"                     (The version string that will be seen when the About button is used in WOTID)
+  _SYSTEM_INFO_           0       [0 = OFF, 1 = ON]  (Whether to print CPU speed, memory free, uptime etc. in the About box)
   _LED_PIN_               6                          (Pin the builtin Teensy LED is on, 6 on Teensy++ 2.0, 11 on Teensy 2.0)
+  _WOTID_FRONTEND_DELAY_  1500    [1.5 seconds]      (WOTID has a massive delay between indicating it's ready to accept data, and when it's actually ready to accept data)
 
 */
 #define _LOGGING_ 0
 #define _SIMULATE_DRUM_ 0
+#define _SIMULATE_GEAR_RATIO_ 0
 #define _COM_BAUD_ 19200
 #define _DEBUG_ 0
 #define _EXTERNAL_RPM_SENSOR_ 0
@@ -36,6 +41,7 @@
 #define _DRUM_HILO_ 0
 #define _TOOTH_1_ HIGH
 #define _TOOTH_2_ HIGH
+#define _TOOTH_SKIP_ 0
 #define _RPM_ HIGH
 #define _IGNORE_STARTVALUE_ 1
 #define _STARTCOUNT_BUFFER_ 5
@@ -48,8 +54,10 @@
 #define _MAXIMUM_MICROSECOND_ 65535
 #define _MAKERUN_TIMEOUT_ 10000
 //#define _MAXIMUM_MICROSECOND_ (int)(65535 / _CLOCK_FREQUENCY_) // not used
-#define _VERSION_STRING_ "Quan-Time WOTID firmware. Version 0.31"
+#define _VERSION_STRING_ "Quan-Time WOTID firmware. Version 0.32"
+#define _SYSTEM_INFO_ 0
 #define _LED_PIN_ 6
+#define _WOTID_FRONTEND_DELAY_ 1500
 /* End Configuration */
 
 /*
