@@ -38,7 +38,7 @@ What about the 2 samples inbetween tooth #1 and tooth #2? We store those samples
 #define _WAIT_FOR_LOW_ 0
 
 // 1 to turn on verbose messages
-#define _DEBUG_ 0
+#define _DEBUG_ 1
 
 /* Teensy CPU Speed Control: http://www.pjrc.com/teensy/prescaler.html */
 #define CPU_PRESCALE(n) (CLKPR = 0x80, CLKPR = (n))
@@ -89,6 +89,10 @@ void loop()
   #else
       sample[0] = pulseIn(Drum_HiLo, _TOOTH_1_, timeout); // 1st tooth (1/4 quarter turn)
   #endif
+  #if (_DEBUG_ == 1)
+    Serial.print("Tooth #1 was actually: ");
+    Serial.println(sample[1]);
+  #endif
 
   if (_TOOTH_SKIP_ >= 1)
   {
@@ -117,6 +121,10 @@ void loop()
       sample[1] = pulseIn(Drum_HiLo, _TOOTH_2_, timeout); // 1st tooth
   #else
       sample[1] = ( pulseIn(Drum_HiLo, _TOOTH_2_, timeout)); // (full turn)
+  #endif
+  #if (_DEBUG_ == 1)
+    Serial.print("Tooth #2 was actually: ");
+    Serial.println(sample[1]);
   #endif
   
   // calculate the difference between the teeth
