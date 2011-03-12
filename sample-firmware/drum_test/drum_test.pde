@@ -21,16 +21,56 @@ int ledState = LOW;
 #define _CIRCUMFERENCE_ 1426.283
 // Pin for LED
 #define _LED_PIN_ 6
+/*
+If our wheel has 4 teeth, we have 4 samples per revolution, if we set this to 1, then every half revolution is a sample (2 per rev), if we set this to 2, then every full rotation is a sample (1 per rev)
 
+For sake of argument we set this to 2, TOOTH #1's sample will only represent a quarter turn (first 1/4), while TOOTH #2's sample will only represent a quarter turn (last 4/4)
+What about the 2 samples inbetween tooth #1 and tooth #2? We store those samples in the int "inbetween", and then divide that by _TOOTH_SKIP (2 is default) and add it to sample[0] (tooth 1) & sample[1] (tooth 2)
+
+*/
+#define _TOOTH_SKIP_ 2
+
+// HIGH gate open, LOW gate closed
 #define _TOOTH_1_ HIGH
 #define _TOOTH_2_ HIGH
 
 // Wait until there is a LOW state (gate is blocked/interrupted) before we get a reading from the HIGH state (gate open).. if we initiate a HIGH state with the sensor starting halfway through the open gate (HIGH), we might not get the data we actually want
 #define _WAIT_FOR_LOW_ 0
 
+// 1 to turn on verbose messages
+#define _DEBUG_ 0
+
+/* Teensy CPU Speed Control: http://www.pjrc.com/teensy/prescaler.html */
+#define CPU_PRESCALE(n) (CLKPR = 0x80, CLKPR = (n))
+#define CPU_16MHz       0x00
+#define CPU_8MHz        0x01
+#define CPU_4MHz        0x02
+#define CPU_2MHz        0x03
+#define CPU_1MHz        0x04
+#define CPU_500kHz      0x05
+#define CPU_250kHz      0x06
+#define CPU_125kHz      0x07
+#define CPU_62kHz       0x08
+/* End Teensy CPU Frequency Overrride */
+
+/*
+example real world data:
+RPM: 583.93   KM/H: 49.97   Tooth 1: 25.69ms   Tooth 2: 25.47ms   Difference: +216.00us (Drum Speeding UP)
+RPM: 594.79   KM/H: 50.90   Tooth 1: 25.22ms   Tooth 2: 25.45ms   Difference: -228.00us (Drum Slowing DOWN)
+
+We see here a difference of 216 and -228 microseconds (0.216 of a microsecond), by setting 300 below instead of saying the drum is speeding up, it will say it is holding a constant speed
+*/
+// in microseconds, what we consider to be difference between the drum holding speed or speeding up, 0 to disable
+#define _CONSTANT_ACCEL_TOLERANCE_ 300
+// in microseconds, what we consider to be difference between the drum holding speed or speeding down, 0 to disable
+#define _CONSTANT_DECEL_TOLERANCE_ -300
+
+int toothskip = 0;
+unsigned int last_sample_diff = 0;
 
 void setup() // main function set
 {
+  //CPU_PRESCALE(CPU_500kHz); // Can be used to change the clock speed of the CPU, in this instance would set the speed during the device's startup.
   Serial.begin(19200);  // setup connection, teensy++ is pure USB anyway, so this isnt hugely important to specify speed       
   pinMode(pin, INPUT); // Pin 0 should be connected to the optical sensor
   pinMode(_LED_PIN_, OUTPUT); // initialize LED
@@ -39,14 +79,38 @@ void setup() // main function set
 void loop()
 {
   unsigned long sample[3];
+  unsigned long inbetween = 0;
   
   #if (_WAIT_FOR_LOW_ == 1)
     while ( digitalRead(pin) == HIGH ) // loop until pin 0 reachs a LOW state
     {
     }
-    sample[0] = pulseIn(Drum_HiLo, _TOOTH_1_, timeout); // 1st tooth
+    if (toothskip == 0)
+    {
+      sample[0] = pulseIn(Drum_HiLo, _TOOTH_1_, timeout); // 1st tooth
+    }
   #else
-    sample[0] = pulseIn(Drum_HiLo, _TOOTH_1_, timeout); // 1st tooth
+    if (toothskip == 0)
+    {
+      sample[0] = pulseIn(Drum_HiLo, _TOOTH_1_, timeout); // 1st tooth (1/4 quarter turn)
+
+      if (_TOOTH_SKIP_ >= 1)
+      {
+        while (_TOOTH_SKIP_ > toothskip)
+        {
+          inbetween += pulseIn(Drum_HiLo, _TOOTH_1_, timeout); // 2nd tooth (1/4 turn)
+          toothskip++;
+          #if (_DEBUG_ == 1)
+            Serial.println("skipping");
+          #endif
+        }
+        toothskip = 0;
+      }
+      #if (_DEBUG_ == 1)
+      Serial.print("milliseconds between 2/4 and 3/4 turn ");
+      Serial.println(inbetween);
+      #endif
+    }
   #endif
 
   if (sample[0] > 0)
@@ -56,10 +120,16 @@ void loop()
     while ( digitalRead(pin) == HIGH ) // loop until pin 0 reachs a LOW state
     {
     }
-    sample[1] = pulseIn(Drum_HiLo, _TOOTH_2_, timeout); // 1st tooth
+    if (toothskip == 0)
+    {
+      sample[1] = pulseIn(Drum_HiLo, _TOOTH_2_, timeout); // 1st tooth
   #else
-    sample[1] = pulseIn(Drum_HiLo, _TOOTH_2_, timeout); // 1st tooth
+    if (toothskip == 0)
+    {
+      sample[1] = ( pulseIn(Drum_HiLo, _TOOTH_2_, timeout)); // (full turn)
+      sample[1] = ( sample[1] + (inbetween / toothskip) );
   #endif
+    }
 
   if (sample[1] > 0)
     to_blink_or_not_to_blink(LOW); // off
@@ -150,7 +220,10 @@ void calculate_difference(unsigned long sample[])
       Serial.print("us");
     }     
  
-    Serial.print(" (Drum Speeding UP)");
+    if (difference < _CONSTANT_ACCEL_TOLERANCE_)
+      Serial.print(" (Drum Holding Constant Speed)");
+    else
+      Serial.print(" (Drum Speeding UP)");
   }
   else if (sample[0] < sample[1])
   {
@@ -174,8 +247,11 @@ void calculate_difference(unsigned long sample[])
       Serial.print(difference);  
       Serial.print("us");
     }      
-    
-    Serial.print(" (Drum Slowing DOWN)");
+
+    if (difference < _CONSTANT_DECEL_TOLERANCE_)
+      Serial.print(" (Drum Holding Constant Speed)");
+    else
+      Serial.print(" (Drum Slowing DOWN)");
   }
   else
   {
