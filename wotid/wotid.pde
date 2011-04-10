@@ -310,7 +310,7 @@ void Gear_Ratio() {
 void Test() {                           //  This just makes sure its spitting out data correctly
   unsigned long sample[1];                        // for the front end to see / calculate.
   
-  for(int x = 0; x < 15; x++) // loop this function set 15x, thats what the frontend wants
+  for(int x = 0; x < _CALIBRATION_SAMPLES_; x++) // loop this function set 15x, thats what the frontend wants
   {
     sample[0] = pulseIn(_DRUM_HILO_, _TOOTH_1_);
     
