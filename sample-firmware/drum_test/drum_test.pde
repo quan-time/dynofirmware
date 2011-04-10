@@ -28,17 +28,20 @@ For sake of argument we set this to 2, TOOTH #1's sample will only represent a q
 What about the 2 samples inbetween tooth #1 and tooth #2? We store those samples in the int "inbetween", and then divide that by _TOOTH_SKIP (2 is default) and add it to sample[0] (tooth 1) & sample[1] (tooth 2)
 
 */
-#define _TOOTH_SKIP_ 2
+#define _TOOTH_SKIP_ 0
 
 // HIGH gate open, LOW gate closed
 #define _TOOTH_1_ HIGH
 #define _TOOTH_2_ HIGH
 
+#define _SAMPLE_PAUSE_ 2
+#define _BETWEEN_SAMPLE_PAUSE_ 2
+
 // Wait until there is a LOW state (gate is blocked/interrupted) before we get a reading from the HIGH state (gate open).. if we initiate a HIGH state with the sensor starting halfway through the open gate (HIGH), we might not get the data we actually want
 #define _WAIT_FOR_LOW_ 0
 
 // 1 to turn on verbose messages
-#define _DEBUG_ 1
+#define _DEBUG_ 0
 
 /* Teensy CPU Speed Control: http://www.pjrc.com/teensy/prescaler.html */
 #define CPU_PRESCALE(n) (CLKPR = 0x80, CLKPR = (n))
@@ -89,6 +92,9 @@ void loop()
   #else
       sample[0] = pulseIn(Drum_HiLo, _TOOTH_1_, timeout); // 1st tooth (1/4 quarter turn)
   #endif
+      if (_BETWEEN_SAMPLE_PAUSE_ > 0)
+        delayMicroseconds(_BETWEEN_SAMPLE_PAUSE_);
+      
   #if (_DEBUG_ == 1)
     Serial.print("Tooth #1 was actually: ");
     Serial.println(sample[1]);
@@ -122,14 +128,19 @@ void loop()
   #else
       sample[1] = ( pulseIn(Drum_HiLo, _TOOTH_2_, timeout)); // (full turn)
   #endif
+  
   #if (_DEBUG_ == 1)
     Serial.print("Tooth #2 was actually: ");
     Serial.println(sample[1]);
   #endif
   
   // calculate the difference between the teeth
-  sample[0] = ( sample[0] + (inbetween / _TOOTH_SKIP_) );
-  sample[1] = ( sample[1] + (inbetween / _TOOTH_SKIP_) );
+  
+  if (_TOOTH_SKIP_ >= 1)
+  {
+    sample[0] = ( sample[0] + (inbetween / _TOOTH_SKIP_) );
+    sample[1] = ( sample[1] + (inbetween / _TOOTH_SKIP_) );
+  }
   
   /*
   // do I need code to subtract instead if the samples are slowing down?
@@ -366,27 +377,33 @@ void print_wotid(int samples, unsigned long sample [])
 {   
   if (samples == 1)
   {
-    Serial.print(sample[0],HEX);
-  }
-  else
-  {  
-    Serial.print(sample[0],HEX);
-    Serial.print(",");
+    Serial.println(sample[0],HEX);
+    if (_SAMPLE_PAUSE_ > 0)
+      delayMicroseconds(_SAMPLE_PAUSE_);
+    return;
   }
 
   if (samples == 2)
   {
-    Serial.print(sample[1],HEX); // Complete line
+    Serial.print(sample[0],HEX);
+    Serial.print(",");
+    Serial.println(sample[1],HEX); // Complete line
+    if (_SAMPLE_PAUSE_ > 0)
+      delayMicroseconds(_SAMPLE_PAUSE_);
+    return;
   }
   else if (samples == 3)
   {
+    Serial.print(sample[0],HEX);
+    Serial.print(",");
     Serial.print(sample[1],HEX);
     Serial.print(",");
-    Serial.print(sample[2],HEX); // Complete line
+    Serial.println(sample[2],HEX); // Complete line
+    if (_SAMPLE_PAUSE_ > 0)
+      delayMicroseconds(_SAMPLE_PAUSE_);
+    return;
   }
-    
-  Serial.println("");
-  
+
   return;
 }
 
@@ -395,26 +412,21 @@ void print_wotid_dec(int samples, unsigned long sample [])
 {   
   if (samples == 1)
   {
-    Serial.print(sample[0],DEC);
-  }
-  else
-  {  
-    Serial.print(sample[0],DEC);
-    Serial.print(",");
+    Serial.println(sample[0],DEC);
+    if (_SAMPLE_PAUSE_ > 0)
+      delayMicroseconds(_SAMPLE_PAUSE_);
+    return;
   }
 
   if (samples == 2)
   {
-    Serial.print(sample[1],DEC); // Complete line
-  }
-  else if (samples == 3)
-  {
-    Serial.print(sample[1],DEC);
+    Serial.print(sample[0],DEC);
     Serial.print(",");
-    Serial.print(sample[2],DEC); // Complete line
+    Serial.println(sample[1],DEC); // Complete line
+    if (_SAMPLE_PAUSE_ > 0)
+      delayMicroseconds(_SAMPLE_PAUSE_);
+    return;
   }
-    
-  Serial.println("");
-  
+
   return;
 }
