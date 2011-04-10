@@ -29,6 +29,8 @@
   _SYSTEM_INFO_           0       [0 = OFF, 1 = ON]  (Whether to print CPU speed, memory free, uptime etc. in the About box)
   _LED_PIN_               6                          (Pin the builtin Teensy LED is on, 6 on Teensy++ 2.0, 11 on Teensy 2.0)
   _WOTID_FRONTEND_DELAY_  1500    [1.5 seconds]      (WOTID has a massive delay between indicating it's ready to accept data, and when it's actually ready to accept data)
+  _SAMPLE_PAUSE_          2       [2 micro, 0 = OFF] (WOTID seems to indicate it needs 2 microseconds between sets of samples for timing reasons, example "HIGH,HIGH" then wait 2 seconds)
+  _BETWEEN_SAMPLE_PAUSE_  2       [2 micro, 0 = OFF] (WOTID seems to indicate it needs 2 microseconds between individual samples for timing reasons, example "HIGH" then wait 2 micros "HIGH") 
 
 */
 #define _LOGGING_ 0
@@ -47,7 +49,7 @@
 #define _STARTCOUNT_BUFFER_ 5
 #define _OPTICAL_TIMEOUT_ 1000000
 #define _SERIAL_BUFFER_ 8
-#define _FILTER_SLOW_SAMPLES_ 1
+#define _FILTER_SLOW_SAMPLES_ 0
 #define _END_RUN_ 4
 #define _MINIMUM_SAMPLES_ 20
 #define _CLOCK_FREQUENCY_ 1
@@ -58,6 +60,8 @@
 #define _SYSTEM_INFO_ 0
 #define _LED_PIN_ 6
 #define _WOTID_FRONTEND_DELAY_ 1500
+#define _SAMPLE_PAUSE_ 2
+#define _BETWEEN_SAMPLE_PAUSE_ 2
 /* End Configuration */
 
 /*

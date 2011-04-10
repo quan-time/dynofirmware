@@ -293,6 +293,10 @@ void Gear_Ratio() {
   for(int x = 0; x < 10; x++) // loop this function set 10x, thats what the frontend wants
   {
     sample[0] = pulseIn(_DRUM_HILO_, _TOOTH_1_, _OPTICAL_TIMEOUT_); // Time it takes for this tooth
+    
+    if (_BETWEEN_SAMPLE_PAUSE_ > 0)
+      delayMicroseconds(_BETWEEN_SAMPLE_PAUSE_);
+    
     sample[1] = pulseIn(_DRUM_HILO_, _TOOTH_2_, _OPTICAL_TIMEOUT_); // to arrive to this tooth
 
     // Should we check if these samples are greater than _MAXIMUM_MICROSECOND_ (65535) first? no because the frontend accepts a decimal value
@@ -370,6 +374,10 @@ void Run_Down() {
   
   // We need to detect that the drum is slowing down, so I don't think _OPTICAL_TIMEOUT_ applies here, it will default to 1 second anyway (set by Arduino).. perhaps we should even allow up to 10 second timeouts
   sample[0] = pulseIn(_DRUM_HILO_, _TOOTH_1_);
+  
+  if (_BETWEEN_SAMPLE_PAUSE_ > 0)
+    delayMicroseconds(_BETWEEN_SAMPLE_PAUSE_);  
+  
   sample[1] = pulseIn(_DRUM_HILO_, _TOOTH_2_);
   sample[2] = 0;
 
@@ -417,6 +425,10 @@ void Drum_Only(int end_run_counter, unsigned long startrun, int samplecount){
   
   sample[0] = pulseIn(_DRUM_HILO_, _TOOTH_1_, _OPTICAL_TIMEOUT_);
   LED_switch(HIGH); // turn LED on
+  
+  if (_BETWEEN_SAMPLE_PAUSE_ > 0)
+    delayMicroseconds(_BETWEEN_SAMPLE_PAUSE_);  
+  
   sample[1] = pulseIn(_DRUM_HILO_, _TOOTH_2_, _OPTICAL_TIMEOUT_);
   LED_switch(LOW); // switch it off again
   sample[2] = 0;
@@ -446,6 +458,10 @@ void Drum_RPM(int end_run_counter){
 
   sample[0] = pulseIn(_DRUM_HILO_, _TOOTH_1_, _OPTICAL_TIMEOUT_);
   LED_switch(HIGH); // turn LED on
+  
+  if (_BETWEEN_SAMPLE_PAUSE_ > 0)
+    delayMicroseconds(_BETWEEN_SAMPLE_PAUSE_);  
+  
   sample[1] = pulseIn(_DRUM_HILO_, _TOOTH_2_, _OPTICAL_TIMEOUT_);
   LED_switch(LOW); // switch it off again
   
@@ -655,7 +671,9 @@ void print_hex(int samples, unsigned long sample [])
   
   if (samples == 1)
   {
-    Serial.print(sample[0],HEX);
+    Serial.println(sample[0],HEX);
+    if (_SAMPLE_PAUSE_ > 0)
+      delayMicroseconds(_SAMPLE_PAUSE_);
     return;
   }
 
@@ -664,6 +682,8 @@ void print_hex(int samples, unsigned long sample [])
     Serial.print(sample[0],HEX);
     Serial.print(",");
     Serial.println(sample[1],HEX); // Complete line
+    if (_SAMPLE_PAUSE_ > 0)
+      delayMicroseconds(_SAMPLE_PAUSE_);
     return;
   }
   else if (samples == 3)
@@ -673,6 +693,8 @@ void print_hex(int samples, unsigned long sample [])
     Serial.print(sample[1],HEX);
     Serial.print(",");
     Serial.println(sample[2],HEX); // Complete line
+    if (_SAMPLE_PAUSE_ > 0)
+      delayMicroseconds(_SAMPLE_PAUSE_);
     return;
   }
 
@@ -710,6 +732,8 @@ void print_dec(int samples, unsigned long sample [])
   if (samples == 1)
   {
     Serial.println(sample[0],DEC);
+    if (_SAMPLE_PAUSE_ > 0)
+      delayMicroseconds(_SAMPLE_PAUSE_);
     return;
   }
 
@@ -718,6 +742,8 @@ void print_dec(int samples, unsigned long sample [])
     Serial.print(sample[0],DEC);
     Serial.print(",");
     Serial.println(sample[1],DEC); // Complete line
+    if (_SAMPLE_PAUSE_ > 0)
+      delayMicroseconds(_SAMPLE_PAUSE_);
     return;
   }
 
