@@ -48,7 +48,7 @@ void loop()
         if ( !(sample[0] == 0) && !(sample[1] == 0) )
         {
           //Serial.print("Angular Acceleration (rads): ");
-          Serial.println( calculate_rads(sample) );
+          Serial.println( calculate_stuff(sample) );
           //Serial.print("Torque: ");
           //Serial.println( ( _MOI_ * calculate_rads(sample) ) );
         }
@@ -117,7 +117,7 @@ void main_menu ()
   return;
 }
 
-int calculate_rads(signed long sample[])
+int calculate_stuff(signed long sample[])
 {
   float rpm;
   float rps;
@@ -126,8 +126,13 @@ int calculate_rads(signed long sample[])
   float angular_acceleration;
   float torque;
   float power;
-  signed long difference = (sample[1] - sample[0]);
+  signed long difference;
   signed long ms_to_secs;
+  
+  if (sample[1] > sample[0])
+    difference = (sample[1] - sample[0]);
+  else
+    difference = (sample[0] - sample[1]);
 
   Serial.println();
   Serial.print("Difference (ms): ");
