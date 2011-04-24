@@ -33,6 +33,8 @@ void loop()
   {     
     readbyte = Serial.read();
     
+    //Serial.println(readbyte);
+    
     if ( (readbyte == 'S') || (readbyte == 's') )
     {
       //About();
@@ -42,6 +44,19 @@ void loop()
       
       while (1 == 1)
       {
+        available_bytes = Serial.available();
+
+        if (available_bytes > 0) 
+        {     
+          readbyte = Serial.read();
+          
+          if ( (readbyte == 'Q') || (readbyte == 'q') )
+          {
+            main_menu();
+            return;
+          } 
+        } 
+
         sample[0] = pulseIn(_PIN_, _TOOTH_1_); // 1st tooth
         sample[1] = pulseIn(_PIN_, _TOOTH_2_); // 1st tooth (1/4 quarter turn)
         
@@ -71,6 +86,19 @@ void loop()
       
       while (_rpm_milliseconds_ == 0)
       {
+        available_bytes = Serial.available();
+
+        if (available_bytes > 0) 
+        {     
+          readbyte = Serial.read();
+          
+          if ( (readbyte == 'Q') || (readbyte == 'q') )
+          {
+            main_menu();
+            return;
+          } 
+        } 
+
         Serial.println("Waiting 1 second to try again");
         delay(1000);
         
@@ -85,9 +113,10 @@ void loop()
       main_menu();
       return;
     }  
-    if (readbyte == '27')
+    if ( (readbyte == 'Q') || (readbyte == 'q') )
     {
       main_menu();
+      return;
     }  
   }
 }
@@ -105,6 +134,7 @@ void main_menu ()
   Serial.println(" kg/m2");
   
   Serial.println("Interactive Options:");
+  Serial.println("- 'Q' to exit back to this menu");
   Serial.println("- 'S' to start dyno run");
   Serial.println("- 'T' to test dyno");
   Serial.print("- 'R' to Calibrate @ ");
