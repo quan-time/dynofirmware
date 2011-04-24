@@ -47,10 +47,10 @@ void loop()
         
         if ( !(sample[0] == 0) && !(sample[1] == 0) )
         {
-          Serial.print("Angular Acceleration (rads): ");
+          //Serial.print("Angular Acceleration (rads): ");
           Serial.println( calculate_rads(sample) );
-          Serial.print("Torque: ");
-          Serial.println( ( _MOI_ * calculate_rads(sample) ) );
+          //Serial.print("Torque: ");
+          //Serial.println( ( _MOI_ * calculate_rads(sample) ) );
         }
         
         //Serial.print(" and ");
@@ -121,42 +121,54 @@ int calculate_rads(signed long sample[])
 {
   float rpm;
   float rps;
+  float rads;
   float angular_velocity;
+  float angular_acceleration;
   float torque;
   float power;
   signed long difference = (sample[1] - sample[0]);
+  signed long ms_to_secs;
 
+  Serial.println();
   Serial.print("Difference (ms): ");
   Serial.print(difference);
-
-  rpm = (float)(60000. / ((difference / 1000.) * _PULSES_PER_REV_));
   
-  Serial.println();
+  ms_to_secs = (difference / 1000); // lets convert from milliseconds to seconds so we can match this to radians per second isntead of radians per milliseconds
+
+  rpm = (float)(60000. / ((difference / 1000.) * _PULSES_PER_REV_)); //revs per minute
+  
   Serial.print(" RPM: ");
   Serial.print(rpm);
   
-  rps = (float)(rpm / 6.28); // rads per second... 1 revolution = 6.28 radians (2P)
+  //rps = (float)(rpm / 60); // revs per seconds
   
-  Serial.print(" RPS: ");
-  Serial.print(rps);
+  //Serial.print(" RPS: ");
+  //Serial.print(rps);
   
-  // angular velocity = w / t     Angular acceleration (a) equals change in angular velocity (w) per change in time.
-  angular_velocity = (float)(rps / difference);
+  rads = (float)(rpm / 9.54929659643); // How many RPM in 1 radian/second? The answer is 9.54929659643.
   
-  Serial.print(" Angular Velocity: ");
-  Serial.print(angular_velocity);
+  Serial.print(" rads: ");
+  Serial.print(rads);
   
-  torque = (_MOI_ * angular_velocity);
+  angular_velocity = rads;
+  
+  // angular acceleration = w / t     Angular acceleration (a) equals change in angular velocity (w) per change in time.
+  angular_acceleration = (float)(angular_velocity / ms_to_secs);
+  
+  Serial.print(" Angular Acceleration: ");
+  Serial.print(angular_acceleration);
+  
+  torque = (_MOI_ * angular_acceleration);
 
   Serial.print(" Torque: ");
   Serial.print(torque);
   
   // P = t * w (Power = torque by angular velocity).
-  power = (torque * angular_velocity);
+  power = (torque * angular_acceleration);
 
   Serial.print(" Power: ");
   Serial.println(power);  
 
-  return angular_velocity;
+  return rpm; // angular_velocity;
 }
 
