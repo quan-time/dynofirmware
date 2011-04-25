@@ -41,6 +41,7 @@
 // Circumfereance in mm
 #define _CIRCUMFERENCE_ 1426.283
 long int _rpm_milliseconds_ = 0;
+#define _PHP_OUTPUT_ 1
 
 #define _LOGGING_ 0
 #define _SIMULATE_DRUM_ 0

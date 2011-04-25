@@ -121,7 +121,12 @@ void loop()
     {
       mybike();
       return;
-    }  
+    }
+    if ( (readbyte == 'X') || (readbyte == 'x') )
+    {
+      mybike();
+      return;
+    }   
   }
 }
 
@@ -187,23 +192,32 @@ void calculate_stuff(signed long sample[])
   // P = t * w (Power = torque by angular velocity).
   power = (torque * angular_acceleration);
   
-  Serial.print("RPM: ");
-  Serial.print(rpm);
-  
-  Serial.print(" Torque: ");
-  Serial.print(torque);
-  
-  Serial.print(" Power: ");
-  Serial.print(power);  
-  
-  Serial.print(" Difference (ms): ");
-  Serial.print(difference);
-  
-  Serial.print(" rads: ");
-  Serial.print(rads);
-  
-  Serial.print(" Angular Acceleration: ");
-  Serial.println(angular_acceleration);
+  #if (_PHP_OUTPUT_ == 1)
+    Serial.print(rpm);
+    Serial.print(" ");
+    Serial.print(torque);
+    Serial.print(" ");
+    Serial.print(power);
+    Serial.println("EOL");
+  #else
+    Serial.print("RPM: ");
+    Serial.print(rpm);
+    
+    Serial.print(" Torque: ");
+    Serial.print(torque);
+    
+    Serial.print(" Power: ");
+    Serial.print(power);  
+    
+    Serial.print(" Difference (ms): ");
+    Serial.print(difference);
+    
+    Serial.print(" rads: ");
+    Serial.print(rads);
+    
+    Serial.print(" Angular Acceleration: ");
+    Serial.println(angular_acceleration);
+  #endif
 
   return; // angular_velocity;
 }
