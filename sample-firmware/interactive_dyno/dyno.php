@@ -3,6 +3,7 @@
 error_reporting(E_ALL);
 ini_set('error_reporting', E_ALL);
 ini_set('display_errors', true);
+//ini_set('auto_detect_line_endings', true);
 
 ob_implicit_flush(true);
 
@@ -10,8 +11,11 @@ set_time_limit(1);
 
 $host = "192.168.0.4";
 $port = 5334;
+$timeout = 250000;
 
 $fp = fsockopen($host, $port, $errno, $errstr, 1);
+
+stream_set_timeout($fp,0, $timeout); // 500ms
 
 if (!$fp)
 {
@@ -22,11 +26,11 @@ else
     $out = "X";
     fwrite($fp, $out);
 
-	while (!feof($fp))
-	{
-		echo "Retreving dyno run from Teensy on $host on port $port ...<br>\n";
-		$contents = fgets($fp, 4096);
-	}
+    $contents = "";
+    echo "Retreving dyno run from Teensy on $host on port $port ...<br>\n";
+
+	$contents = stream_get_contents($fp);
+	fclose($fp);
 
 	$pattern = '/([^.\s0-9A-Z])/';
 	$replacement = '';
@@ -44,18 +48,18 @@ else
 	fwrite($filewrite, $contents);
 	fclose($filewrite);
 
-	fclose($fp);
-
 	$fp = fsockopen($host, $port, $errno, $errstr, 1);
+
+	stream_set_timeout($fp,0, $timeout); // 500ms
 
     $out = "v";
     fwrite($fp, $out);
 
-	while (!feof($fp))
-	{
-		echo "<br>Retreving 2nd dyno run from Teensy on $host on port $port ...<br>\n";
-		$contents = fgets($fp, 4096);
-	}
+    $contents = "";
+    echo "Retreving 2nd dyno run from Teensy on $host on port $port ...<br>\n";
+
+	$contents = stream_get_contents($fp);
+	fclose($fp);
 
 	$pattern = '/([^.\s0-9A-Z])/';
 	$replacement = '';
@@ -73,19 +77,18 @@ else
 	fwrite($filewrite, $contents);
 	fclose($filewrite);
 
-
-	fclose($fp);
-
 	$fp = fsockopen($host, $port, $errno, $errstr, 1);
+
+	stream_set_timeout($fp,0, $timeout); // 500ms
 
     $out = "c";
     fwrite($fp, $out);
 
-	while (!feof($fp))
-	{
-		echo "<br>Retreving 3rd dyno run from Teensy on $host on port $port ...<br>\n";
-		$contents = fgets($fp, 4096);
-	}
+    $contents = "";
+    echo "Retreving 3rd dyno run from Teensy on $host on port $port ...<br>\n";
+
+	$contents = stream_get_contents($fp);
+	fclose($fp);
 
 	$pattern = '/([^.\s0-9A-Z])/';
 	$replacement = '';
@@ -103,8 +106,6 @@ else
 	fwrite($filewrite, $contents);
 	fclose($filewrite);
 
-
-	fclose($fp);
 }
 
 echo "<br>Fetch complete, now feeding to gnuPlot<br>\n";
