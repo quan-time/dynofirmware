@@ -1,11 +1,21 @@
 #!/usr/bin/gnuplot
 set terminal png size 1920,1200
-set output 'graph.png'
+#set output '/home/poseidon/www/graph.png'
 
 set xlabel "RPM"
 set ylabel "Torque/Power"
 set grid
 set time
 
-plot[:][:30] "stuff.dat" using 1:2 with linespoints, "stuff.dat" using 1:3 with linespoints
+set style line 1 lt 1 lw 3 pt 3 lc rgb "red"
+set style line 2 lt 3 lw 3 pt 3 lc rgb "red"
+set style line 3 lt 1 lw 3 pt 3 lc rgb "blue"
+set style line 4 lt 3 lw 3 pt 3 lc rgb "blue"
+
+plot[:][:50] "stuff.dat" using 1:2 title "Torque Run #1" with lines lt 1, \
+"stuff.dat" using 1:3 title "Power Run #1" with lines lt 4, \
+"stuff2.dat" using 1:2 title "Torque Run #2" with lines lt 3, \
+"stuff2.dat" using 1:3 title "Power Run #2" with lines lt 2, \
+"stuff3.dat" using 1:2 title "Torque Run #3" with lines lt 5, \
+"stuff3.dat" using 1:3 title "Power Run #3" with lines lt 6
 #

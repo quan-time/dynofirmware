@@ -41,12 +41,12 @@
 // Circumfereance in mm
 #define _CIRCUMFERENCE_ 1426.283
 long int _rpm_milliseconds_ = 0;
-#define _PHP_OUTPUT_ 1
+int _php_output_ = 0;
 
 #define _LOGGING_ 0
 #define _SIMULATE_DRUM_ 0
 #define _SIMULATE_GEAR_RATIO_ 0
-#define _COM_BAUD_ 19200
+#define _COM_BAUD_ 1000000
 #define _DEBUG_ 0
 #define _EXTERNAL_RPM_SENSOR_ 0
 #define _PIN_ 0
@@ -57,7 +57,7 @@ long int _rpm_milliseconds_ = 0;
 #define _RPM_ HIGH
 #define _IGNORE_STARTVALUE_ 1
 #define _STARTCOUNT_BUFFER_ 5
-#define _OPTICAL_TIMEOUT_ 1000000
+#define _OPTICAL_TIMEOUT_ 115200
 #define _SERIAL_BUFFER_ 8
 #define _FILTER_SLOW_SAMPLES_ 0
 #define _END_RUN_ 4

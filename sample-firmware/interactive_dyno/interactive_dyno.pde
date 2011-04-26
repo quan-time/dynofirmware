@@ -119,14 +119,28 @@ void loop()
     }
     if ( (readbyte == 'Z') || (readbyte == 'z') )
     {
+      _php_output_ = 0;
       mybike();
       return;
     }
     if ( (readbyte == 'X') || (readbyte == 'x') )
     {
+      _php_output_ = 1;
+      mybike();
+      return;
+    }
+    if ( (readbyte == 'C') || (readbyte == 'c') )
+    {
+      _php_output_ = 2;
       mybike();
       return;
     }   
+    if ( (readbyte == 'V') || (readbyte == 'v') )
+    {
+      _php_output_ = 3;
+      mybike();
+      return;
+    } 
   }
 }
 
@@ -146,6 +160,9 @@ void main_menu ()
   Serial.println("- 'Q' to exit back to this menu");
   Serial.println("- 'S' to start dyno run");
   Serial.println("- 'Z' to start saved ZZR250 run");
+  Serial.println("- 'X' for PHP output (sample[0] RPM)");
+  Serial.println("- 'C' for PHP output (sample[1] RPM)");
+  Serial.println("- 'V' for PHP output (inbetween RPM)");
   Serial.println("- 'T' to test dyno");
   Serial.print("- 'R' to Calibrate @ ");
   Serial.print(_RPM_CALIBRATION_);
@@ -166,47 +183,66 @@ void calculate_stuff(signed long sample[])
   float angular_acceleration;
   float torque;
   float power;
+  float kilowatts;
+  float horsepower;
+  signed long adjustedsample;
   signed long difference;
   float ms_to_secs;
   
   if (sample[1] > sample[0])
+  {
     difference = (sample[1] - sample[0]);
+    adjustedsample = (sample[0] + (difference/2));
+  }
   else
+  {
     difference = (sample[0] - sample[1]); // so not a negative figure
+    adjustedsample = (sample[1] + (difference/2));
+  }
     
   ms_to_secs = (float)(difference * 10); // lets convert from milliseconds to seconds so we can match this to radians per second isntead of radians per milliseconds.. i dont know why 10 works here. seriously.
 
-  rpm = (float)(60000. / ((sample[1] / 1000.) * _PULSES_PER_REV_)); //revs per minute, using sample[0] though reall we should use middleground between sample[0] and sample[1] for accuracy.
+  if (_php_output_ < 2)
+    rpm = (float)(60000. / ((sample[0] / 1000.) * _PULSES_PER_REV_)); //revs per minute, using sample[0] though reall we should use middleground between sample[0] and sample[1] for accuracy.
+  else if (_php_output_ == 2)
+    rpm = (float)(60000. / ((sample[1] / 1000.) * _PULSES_PER_REV_)); //revs per minute, using sample[0] though reall we should use middleground between sample[0] and sample[1] for accuracy.  
+  else if (_php_output_ == 3)
+    rpm = (float)(60000. / ((adjustedsample / 1000.) * _PULSES_PER_REV_)); //revs per minute, using sample[0] though reall we should use middleground between sample[0] and sample[1] for accuracy.
   
   rpm = (float)(rpm * 4.55); // 4.55 needs to be replaced with the engine:drum ratio, my bike is 4.5
   
   rads = (float)(rpm / 9.54929659643); // How many RPM in 1 radian/second? The answer is 9.54929659643.
   
-  angular_velocity = rads; // sake of readability
+  angular_velocity = (float)rads; // sake of readability
   
   // angular acceleration = w / t     Angular acceleration (a) equals change in angular velocity (w) per change in time.
   angular_acceleration = (float)(angular_velocity / ms_to_secs);
   
-  torque = (_MOI_ * angular_acceleration); // MOI = motion of inertia, we know the drum is 11.83 as defined in config.h
+  torque = (float)(_MOI_ * angular_acceleration); // MOI = motion of inertia, we know the drum is 11.83 as defined in config.h
   
   // P = t * w (Power = torque by angular velocity).
-  power = (torque * angular_acceleration);
+  power = (float)(torque * angular_acceleration);
   
-  #if (_PHP_OUTPUT_ == 1)
+  horsepower = (float)(power * 1.34);
+  
+  if (_php_output_ > 0)
+  {
     Serial.print(rpm);
     Serial.print(" ");
     Serial.print(torque);
     Serial.print(" ");
     Serial.print(power);
     Serial.println("EOL");
-  #else
+  }
+  else
+  {
     Serial.print("RPM: ");
     Serial.print(rpm);
     
     Serial.print(" Torque: ");
     Serial.print(torque);
     
-    Serial.print(" Power: ");
+    Serial.print(" Power (kw): ");
     Serial.print(power);  
     
     Serial.print(" Difference (ms): ");
@@ -217,7 +253,7 @@ void calculate_stuff(signed long sample[])
     
     Serial.print(" Angular Acceleration: ");
     Serial.println(angular_acceleration);
-  #endif
+  }
 
   return; // angular_velocity;
 }

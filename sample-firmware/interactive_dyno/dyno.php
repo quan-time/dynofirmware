@@ -1,60 +1,17 @@
 <?
 
 error_reporting(E_ALL);
+ini_set('error_reporting', E_ALL);
+ini_set('display_errors', true);
 
 ob_implicit_flush(true);
 
-set_time_limit(5);
+set_time_limit(1);
 
 $host = "192.168.0.4";
 $port = 5334;
-//$port = 6655;
 
-/*if (($sock = socket_create(AF_INET, SOCK_STREAM, SOL_TCP)) === false) {
-    echo "socket_create() failed: reason: " . socket_strerror(socket_last_error()) . "\n";
-}
-
-socket_set_block($sock) or die("cant set block");
-
-socket_set_option( $sock, SOL_SOCKET, SO_SNDTIMEO, array("sec"=>10, "usec"=>0) )
-	or die("Unable to set timeout\n");
-
-socket_connect($sock, $host, $port)
-	or die("Unable to connect to $host on $port socket\n");
-
-$message="z";
-$len = strlen($message);
-$offset = 0;
-while ($offset < $len) {
-    $sent = socket_write($sock, substr($message, $offset), $len-$offset);
-    if ($sent === false) {
-        // Error occurred, break the while loop
-        break;
-    }
-    $offset += $sent;
-}
-if ($offset < $len) {
-    $errorcode = socket_last_error();
-    $errormsg = socket_strerror($errorcode);
-    echo "SENDING ERROR: $errormsg";
-} else {
-        // Data sent ok
-}
-
-if($sent === false) {
-	return false;
-}
-
-while($buffer=@socket_read($sock,512,PHP_NORMAL_READ)){
-    echo $buffer;
-}
-if(socket_last_error($sock) == 104) {
-    echo "Connection closed";
-}*/
-
-// start/end
-
-$fp = fsockopen($host, $port, $errno, $errstr, 5);
+$fp = fsockopen($host, $port, $errno, $errstr, 1);
 
 if (!$fp)
 {
@@ -62,44 +19,108 @@ if (!$fp)
 }
 else
 {
-    $out = "z";
+    $out = "X";
     fwrite($fp, $out);
 
-while (!feof($fp))
-{
-	echo "Retreving dyno run from Teensy on $ip:$host...<br>\n";
-	$contents = fgets($fp, 4096);
-}
+	while (!feof($fp))
+	{
+		echo "Retreving dyno run from Teensy on $host on port $port ...<br>\n";
+		$contents = fgets($fp, 4096);
+	}
 
-$pattern = '/([^.\s0-9A-Z])/';
-$replacement = '';
+	$pattern = '/([^.\s0-9A-Z])/';
+	$replacement = '';
 
-$contents = preg_replace( $pattern, $replacement, $contents );
+	$contents = preg_replace( $pattern, $replacement, $contents );
 
-$pattern = '/(EOL)/';
-$replacement = "\n";
+	$pattern = '/(EOL)/';
+	$replacement = "\n";
 
-$contents = preg_replace( $pattern, $replacement, $contents );
+	$contents = preg_replace( $pattern, $replacement, $contents );
 
-echo $contents;
+	echo $contents;
 
-$filewrite = fopen('stuff.dat', 'w');
-fwrite($filewrite, $contents);
-fclose($filewrite);
+	$filewrite = fopen('stuff.dat', 'w');
+	fwrite($filewrite, $contents);
+	fclose($filewrite);
+
+	fclose($fp);
+
+	$fp = fsockopen($host, $port, $errno, $errstr, 1);
+
+    $out = "v";
+    fwrite($fp, $out);
+
+	while (!feof($fp))
+	{
+		echo "<br>Retreving 2nd dyno run from Teensy on $host on port $port ...<br>\n";
+		$contents = fgets($fp, 4096);
+	}
+
+	$pattern = '/([^.\s0-9A-Z])/';
+	$replacement = '';
+
+	$contents = preg_replace( $pattern, $replacement, $contents );
+
+	$pattern = '/(EOL)/';
+	$replacement = "\n";
+
+	$contents = preg_replace( $pattern, $replacement, $contents );
+
+	echo $contents;
+
+	$filewrite = fopen('stuff2.dat', 'w');
+	fwrite($filewrite, $contents);
+	fclose($filewrite);
 
 
+	fclose($fp);
+
+	$fp = fsockopen($host, $port, $errno, $errstr, 1);
+
+    $out = "c";
+    fwrite($fp, $out);
+
+	while (!feof($fp))
+	{
+		echo "<br>Retreving 3rd dyno run from Teensy on $host on port $port ...<br>\n";
+		$contents = fgets($fp, 4096);
+	}
+
+	$pattern = '/([^.\s0-9A-Z])/';
+	$replacement = '';
+
+	$contents = preg_replace( $pattern, $replacement, $contents );
+
+	$pattern = '/(EOL)/';
+	$replacement = "\n";
+
+	$contents = preg_replace( $pattern, $replacement, $contents );
+
+	echo $contents;
+
+	$filewrite = fopen('stuff3.dat', 'w');
+	fwrite($filewrite, $contents);
+	fclose($filewrite);
 
 
-fclose($fp);
-
+	fclose($fp);
 }
 
 echo "<br>Fetch complete, now feeding to gnuPlot<br>\n";
 
-echo exec('./dyno.pg');
+$cmd = './dyno.pg > /home/poseidon/www/graph.png';
+
+//echo system($cmd); // or die('failed to system()<br>');
+
+//echo exec($cmd, $results); // or die("failed to exec()<br>");
+
+//echo shell_exec($cmd); // or die("failed to shell_exec()<br>");
+
+echo exec($cmd); // or die("Failed to execute gnuplot script<br>");
 
 echo "<br>Displaying dyno graph 1920x1200:<br>\n";
 
-?>
+echo '<img src="graph.png">';
 
-<img src="graph.png">
+?>
