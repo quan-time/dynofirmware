@@ -34,14 +34,16 @@
   _CALIBRATION_SAMPLES_   15                         (The Test() function used by WOTID's calibration tool, the documentation by default specifies 15 samples but depending on how fast the drum is spinning, 15 samples could only last 3 seconds, if you wanted it to run for afew minutes maybe a value of 1500 samples)
 
 */
-#define _MOI_ (float)11.83
 #define _RPM_CALIBRATION_ 4000
 // How many pulses per revolution
 #define _PULSES_PER_REV_ 4
 // Circumfereance in mm
-#define _CIRCUMFERENCE_ 1426.283
+#define _CIRCUMFERENCE_ (float)1426.283
 long int _rpm_milliseconds_ = 0;
 int _php_output_ = 0;
+float _MOI_ = 11.83;
+float _gear_ratio_ = 3.9;
+float _drum_quarter_turn_ = 4000; // maybe should be 3750ms
 
 #define _LOGGING_ 0
 #define _SIMULATE_DRUM_ 0

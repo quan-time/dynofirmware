@@ -24,7 +24,9 @@ void setup()
 void loop()
 {
   int available_bytes = 0;
+  int i = 0;
   int readbyte;
+  int readbytebuffer[5];
   signed long sample[3];
   
   available_bytes = Serial.available();
@@ -56,21 +58,13 @@ void loop()
           } 
         }
 
-        sample[0] = pulseIn(_PIN_, _TOOTH_1_); // 1st tooth
-        sample[1] = pulseIn(_PIN_, _TOOTH_2_); // 1st tooth (1/4 quarter turn)
+        sample[0] = pulseIn(_PIN_, _TOOTH_1_); // 1st tooth (quarter turn)
+        sample[1] = pulseIn(_PIN_, _TOOTH_2_); // 2nd tooth (half turn)
         
         if ( !(sample[0] == 0) && !(sample[1] == 0) )
         {
-          //Serial.print("Angular Acceleration (rads): ");
           calculate_stuff(sample);
-          //Serial.print("Torque: ");
-          //Serial.println( ( _MOI_ * calculate_rads(sample) ) );
         }
-        
-        //Serial.print(" and ");
-        //Serial.println(calculate_rpm(sample[1]);
-      
-        //return;
       }
     }
     if ( (readbyte == 'R') || (readbyte == 'r') )
@@ -109,6 +103,8 @@ void loop()
       Serial.print(" milliseconds = ");
       Serial.println(_RPM_CALIBRATION_);
       
+      _gear_ratio_ = (float)(_rpm_milliseconds_ / _drum_quarter_turn_);
+      
       main_menu();
       return;
     }  
@@ -141,6 +137,47 @@ void loop()
       mybike();
       return;
     } 
+    if ( (readbyte == 'Y') || (readbyte == 'y') )
+    {
+      _gear_ratio_ = 0;
+      
+      Serial.println("=================");
+      Serial.println("Enter engine:drum ratio: (2 decimal points MAX!)");
+      Serial.println("=================");
+
+      available_bytes = Serial.available();
+    
+      while (available_bytes == 0)
+      {
+        available_bytes = Serial.available();  
+      }
+
+      if (available_bytes > 0) 
+      {
+        while (i < available_bytes) // for every byte available, readbyte[0] holds the first byte, readbyte[1] holds the second byte etc
+        {
+          readbytebuffer[i] = Serial.read();
+          
+          if (i == 0)
+            _gear_ratio_ = (readbytebuffer[i] - 48);
+          else if (i == 2)
+            _gear_ratio_ = (float)( _gear_ratio_ + ((readbytebuffer[i] - 48) / 10.));
+          else if (i == 3)
+            _gear_ratio_ = (float)( _gear_ratio_ + ((readbytebuffer[i] - 48) / 100.));
+          else if (i == 4)
+            break;
+            
+          i++; 
+        }
+     }
+        
+     Serial.println("Selected gear ratio: ");
+     Serial.println(_gear_ratio_);
+     
+     main_menu();
+
+     return;
+    }
   }
 }
 
@@ -155,6 +192,9 @@ void main_menu ()
   Serial.print("Drum Inertia: ");
   Serial.print(_MOI_);
   Serial.println(" kg/m2");
+  Serial.print("Drum Circumference: ");
+  Serial.print(_CIRCUMFERENCE_);
+  Serial.println(" kg/m2");  
   
   Serial.println("Interactive Options:");
   Serial.println("- 'Q' to exit back to this menu");
@@ -168,7 +208,17 @@ void main_menu ()
   Serial.print(_RPM_CALIBRATION_);
   Serial.print(" RPM [currently: ");
   Serial.print(_rpm_milliseconds_);
-  Serial.println(" milliseconds]");
+  Serial.print(" milliseconds]");
+  if (_rpm_milliseconds_ > 0)
+  {
+    Serial.print(" calculated engine:bike ratio: ");
+    Serial.println( _gear_ratio_ );
+  }
+  else
+    Serial.println("");
+  
+  Serial.print("- 'Y' to manually enter/override \"engine:rpm ratio\". Currently: ");
+  Serial.println( _gear_ratio_ );
   Serial.println("***************************************");
   
   return;
@@ -177,6 +227,7 @@ void main_menu ()
 void calculate_stuff(signed long sample[])
 {
   float rpm;
+  float drumrpm;
   float rps;
   float rads;
   float angular_velocity;
@@ -211,6 +262,8 @@ void calculate_stuff(signed long sample[])
   
   rpm = (float)(rpm * 4.55); // 4.55 needs to be replaced with the engine:drum ratio, my bike is 4.5
   
+  drumrpm = (float)(60000. / ((sample[0] / 1000.) * _PULSES_PER_REV_));
+  
   rads = (float)(rpm / 9.54929659643); // How many RPM in 1 radian/second? The answer is 9.54929659643.
   
   angular_velocity = (float)rads; // sake of readability
@@ -236,7 +289,10 @@ void calculate_stuff(signed long sample[])
   }
   else
   {
-    Serial.print("RPM: ");
+    Serial.print("Drum RPM: ");
+    Serial.print(drumrpm);
+
+    Serial.print(" RPM: ");
     Serial.print(rpm);
     
     Serial.print(" Torque: ");
