@@ -44,6 +44,7 @@ int _php_output_ = 0;
 float _MOI_ = 11.83;
 float _gear_ratio_ = 3.9;
 float _drum_quarter_turn_ = 4000; // maybe should be 3750ms
+int _metric_ = 1;
 
 #define _LOGGING_ 0
 #define _SIMULATE_DRUM_ 0

@@ -136,7 +136,21 @@ void loop()
       _php_output_ = 3;
       mybike();
       return;
-    } 
+    }
+    if ( (readbyte == 'M') || (readbyte == 'm') )
+    {
+      Serial.println("Switched to METRIC");
+      _metric_ = 1;
+      main_menu();
+      return;
+    }
+    if ( (readbyte == 'I') || (readbyte == 'i') )
+    {
+      Serial.println("Switched to IMPERIAL");
+      _metric_ = 0;
+      main_menu();
+      return;
+    }  
     if ( (readbyte == 'Y') || (readbyte == 'y') )
     {
       _gear_ratio_ = 0;
@@ -189,6 +203,12 @@ void main_menu ()
   Serial.print(_COM_BAUD_);
   Serial.println(" baud");
 
+  Serial.print("Currently configured for: ");
+  if (_metric_ == 1)
+    Serial.println("METRIC Kilowatts & Newton Meters (kw & nm)");
+  else
+    Serial.println("IMPERIAL Horsepower & Foot Pounds (hp & ft-lbs)");
+
   Serial.print("Drum Inertia: ");
   Serial.print(_MOI_);
   Serial.println(" kg/m2");
@@ -198,6 +218,12 @@ void main_menu ()
   
   Serial.println("Interactive Options:");
   Serial.println("- 'Q' to exit back to this menu");
+
+  if (_metric_ == 1)
+    Serial.println("- 'I' to change to Imperial");
+  else
+    Serial.println("- 'M' to change to Metric");
+
   Serial.println("- 'S' to start dyno run");
   Serial.println("- 'Z' to start saved ZZR250 run");
   Serial.println("- 'X' for PHP output (sample[0] RPM)");
@@ -233,6 +259,7 @@ void calculate_stuff(signed long sample[])
   float angular_velocity;
   float angular_acceleration;
   float torque;
+  float ftlbs;
   float power;
   float kilowatts;
   float horsepower;
@@ -273,6 +300,8 @@ void calculate_stuff(signed long sample[])
   
   torque = (float)(_MOI_ * angular_acceleration); // MOI = motion of inertia, we know the drum is 11.83 as defined in config.h
   
+  ftlbs = (float)(torque / 1.35);
+  
   // P = t * w (Power = torque by angular velocity).
   power = (float)(torque * angular_acceleration);
   
@@ -282,33 +311,58 @@ void calculate_stuff(signed long sample[])
   {
     Serial.print(rpm);
     Serial.print(" ");
-    Serial.print(torque);
+
+    if (_metric_ == 1)
+      Serial.print(torque);
+    else
+      Serial.print(ftlbs);    
+      
     Serial.print(" ");
-    Serial.print(power);
+
+    if (_metric_ == 1)
+      Serial.print(power);
+    else
+      Serial.print(horsepower);
+
     Serial.println("EOL");
   }
   else
   {
-    Serial.print("Drum RPM: ");
-    Serial.print(drumrpm);
-
     Serial.print(" RPM: ");
     Serial.print(rpm);
     
-    Serial.print(" Torque: ");
-    Serial.print(torque);
+    if (_metric_ == 1)
+    {
+      Serial.print(" Torque (nm): ");
+      Serial.print(torque);
+    }
+    else
+    {
+      Serial.print(" Torque (ft-lbs): ");
+      Serial.print(ftlbs);
+    }
     
-    Serial.print(" Power (kw): ");
-    Serial.print(power);  
+    if (_metric_ == 1)
+    {
+      Serial.print(" Power (kw): ");
+      Serial.print(power);
+    }  
+    else
+    {
+      Serial.print(" Power (hp): ");
+      Serial.print(horsepower);
+    } 
     
-    Serial.print(" Difference (ms): ");
+    Serial.println("");
+    // The below is for debug purposes
+    /*Serial.print(" Difference (ms): ");
     Serial.print(difference);
     
     Serial.print(" rads: ");
     Serial.print(rads);
     
     Serial.print(" Angular Acceleration: ");
-    Serial.println(angular_acceleration);
+    Serial.println(angular_acceleration);*/
   }
 
   return; // angular_velocity;
