@@ -287,7 +287,7 @@ void calculate_stuff(signed long sample[])
   else if (_php_output_ == 3)
     rpm = (float)(60000. / ((adjustedsample / 1000.) * _PULSES_PER_REV_)); //revs per minute, using sample[0] though reall we should use middleground between sample[0] and sample[1] for accuracy.
   
-  rpm = (float)(rpm * 4.55); // 4.55 needs to be replaced with the engine:drum ratio, my bike is 4.5
+  rpm = (float)(rpm * _gear_ratio_); // 4.55 needs to be replaced with the engine:drum ratio, my bike is 4.5
   
   drumrpm = (float)(60000. / ((sample[0] / 1000.) * _PULSES_PER_REV_));
   
@@ -305,7 +305,10 @@ void calculate_stuff(signed long sample[])
   // P = t * w (Power = torque by angular velocity).
   power = (float)(torque * angular_acceleration);
   
-  horsepower = (float)(power * 1.34);
+  horsepower = (float)((torque * rpm) / 5252);
+  
+  kilowatts = (float)((torque * rpm) / 9549);
+  //horsepower = (float)(power * 1.34);
   
   if (_php_output_ > 0)
   {
@@ -320,7 +323,7 @@ void calculate_stuff(signed long sample[])
     Serial.print(" ");
 
     if (_metric_ == 1)
-      Serial.print(power);
+      Serial.print(kilowatts);
     else
       Serial.print(horsepower);
 
@@ -345,7 +348,7 @@ void calculate_stuff(signed long sample[])
     if (_metric_ == 1)
     {
       Serial.print(" Power (kw): ");
-      Serial.print(power);
+      Serial.print(kilowatts);
     }  
     else
     {
