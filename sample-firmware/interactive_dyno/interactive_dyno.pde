@@ -36,11 +36,44 @@ void loop()
     readbyte = Serial.read();
     
     //Serial.println(readbyte);
-    
+
+    if ( (readbyte == 'A') || (readbyte == 'a') )
+    {
+      Serial.println("=================");
+      Serial.println("Starting Dyno Run with Raw Output \"hex, hex, 0\" (press Q to exit)");
+      Serial.println("=================");
+
+      while (1 == 1)
+      {
+        available_bytes = Serial.available();
+
+        if (available_bytes > 0) 
+        {     
+          readbyte = Serial.read();
+          
+          if ( (readbyte == 'Q') || (readbyte == 'q') )
+          {
+            main_menu();
+            return;
+          } 
+        }
+
+        sample[0] = pulseIn(_PIN_, _TOOTH_1_); // 1st tooth (quarter turn)
+        sample[1] = pulseIn(_PIN_, _TOOTH_2_); // 2nd tooth (half turn)
+
+        if ( !(sample[0] == 0) && !(sample[1] == 0) )
+        {
+          Serial.print(sample[0],HEX);
+          Serial.print(",");
+          Serial.print(sample[1],HEX);
+          Serial.println(",0");
+        }
+      }
+    }
     if ( (readbyte == 'S') || (readbyte == 's') )
     {
       Serial.println("=================");
-      Serial.println("Starting Dyno Run (infinite loop, restart the serial connection when finished)");
+      Serial.println("Starting Dyno Run \"rpm torque power\" (press Q to exit)");
       Serial.println("=================");
 
       while (1 == 1)
@@ -224,7 +257,8 @@ void main_menu ()
   else
     Serial.println("- 'M' to change to Metric");
 
-  Serial.println("- 'S' to start dyno run");
+  Serial.println("- 'A' to start dyno run (raw output \"hex, hex, 0\")");
+  Serial.println("- 'S' to start dyno run (power output \"rpm torque power\")");
   Serial.println("- 'Z' to start saved ZZR250 run");
   Serial.println("- 'X' for PHP output (sample[0] RPM)");
   Serial.println("- 'C' for PHP output (sample[1] RPM)");
@@ -318,7 +352,7 @@ void calculate_stuff(signed long sample[])
     if (_metric_ == 1)
       Serial.print(torque);
     else
-      Serial.print(ftlbs);    
+      Serial.print(torque);    // or ft-lbs
       
     Serial.print(" ");
 
