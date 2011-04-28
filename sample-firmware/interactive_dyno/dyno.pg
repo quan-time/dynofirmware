@@ -1,18 +1,40 @@
 #!/usr/bin/gnuplot
-set terminal png size 1920,1200
-#set output '/home/poseidon/www/graph.png'
 
-set xlabel "RPM"
-set ylabel "Torque/Power"
-set grid
-set time
+set terminal unknown
 
 set style line 1 lt 1 lw 3 pt 3 lc rgb "red"
 set style line 2 lt 3 lw 3 pt 3 lc rgb "red"
 set style line 3 lt 1 lw 3 pt 3 lc rgb "blue"
 set style line 4 lt 3 lw 3 pt 3 lc rgb "blue"
 
-plot[:][:50] "stuff.dat" using 1:2 title "Torque Run #1" with lines lt 1, \
+plot 'stuff.dat' u 1:2
+min_torque = GPVAL_DATA_Y_MIN
+max_torque = GPVAL_DATA_Y_MAX
+max_rpm = GPVAL_DATA_X_MAX
+
+plot 'stuff.dat' u 1:3
+min_power = GPVAL_DATA_Y_MIN
+max_power = GPVAL_DATA_Y_MAX
+
+#set label 1 "Max Power" at (max_rpm / 2),max_power
+#set label 2 "max_power" at (max_rpm / 2),(max_power-5)
+set key top center title "kilowatts/nm"
+
+set xlabel "RPM"
+set ylabel "Torque" textcolor lt 1
+set y2label "Power" textcolor lt 4
+set yrange [:(max_power + 5)]
+set y2range [:(max_power + 5)]
+set y2tics mirror
+set grid xtics back lt -1, ytics back lt -1, mxtics back, mytics back
+set time
+set mxtics 10
+set mytics 5
+
+set terminal png size 1920,1200
+#set output 'graph.png'
+
+plot "stuff.dat" using 1:2 title "Torque Run #1" with lines lt 1, \
 "stuff.dat" using 1:3 title "Power Run #1" with lines lt 4, \
 "stuff2.dat" using 1:2 title "Torque Run #2" with lines lt 3, \
 "stuff2.dat" using 1:3 title "Power Run #2" with lines lt 2, \
