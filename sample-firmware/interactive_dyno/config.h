@@ -43,7 +43,7 @@ long int _rpm_milliseconds_ = 0;
 int _php_output_ = 0;
 float _MOI_ = 11.83;
 float _gear_ratio_ = 3.9;
-float _drum_quarter_turn_ = 4000; // maybe should be 3750ms
+float _drum_quarter_turn_ = 3750; //this is the time it takes the drum to complete 1/4 rotation at 4000rpm in microseconds. 3750us = 3.75ms
 int _metric_ = 1;
 
 #define _LOGGING_ 0
